@@ -1,0 +1,157 @@
+{
+  "name": "vscode-codedeploy-extension",
+  "displayName": "AWS CodeDeploy Extension",
+  "version": "0.0.1",
+  "description": "vscode CodeDeploy Extension",
+  "main": "./out/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "postbuild": "copy ./resources/ ./out/ -Recurse",
+    "watch": "tsc -watch -p ./",
+    "postinstall": "node ./node_modules/vscode/bin/install",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "CodeDeploy"
+  ],
+  "author": "singwm@amazon.com",
+  "license": "MIT",
+  "dependencies": {
+    "@types/node": "^12.7.5",
+    "@types/vscode": "^1.38.0",
+    "adm-zip": "^0.4.13",
+    "aws-sdk": "^2.528.0",
+    "typescript": "^3.6.3",
+    "vscode": "^1.1.36"
+  },
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "id": "cdExplorer",
+          "name": "AWS CodeDeploy"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "cdExplorer.refresh",
+        "title": "Refresh",
+        "icon": {
+          "light": "resources/light/refresh.svg",
+          "dark": "resources/dark/refresh.svg"
+        }
+      },
+      {
+        "command": "cdExplorer.openconsole",
+        "title": "Open Console"
+      },
+      {
+        "command": "cdExplorer.create",
+        "title": "Create Application"
+      },
+      {
+        "command": "cdExplorer.select",
+        "title": "Add Existing Application"
+      },
+      {
+        "command": "cdExplorer.remove",
+        "title": "Delete Application"
+      },
+      {
+        "command": "cdExplorer.deploy",
+        "title": "Deploy"
+      },
+      {
+        "command": "cdExplorer.stop",
+        "title": "Stop Deployment"
+      }
+    ],
+    "menus": {
+      "commandPalette": [],
+      "view/title": [
+        {
+          "command": "cdExplorer.refresh",
+          "when": "view == cdExplorer",
+          "group": "navigation"
+        },
+        {
+          "command": "cdExplorer.openconsole",
+          "when": "view == cdExplorer",
+          "group": "1_application_view"
+        },
+        {
+          "command": "cdExplorer.select",
+          "when": "view == cdExplorer",
+          "group": "application_mod"
+        },
+        {
+          "command": "cdExplorer.create",
+          "when": "view == cdExplorer",
+          "group": "application_mod"
+        },
+        {
+          "command": "cdExplorer.refresh",
+          "when": "view == cdExplorer",
+          "group": "z_extension"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "cdExplorer.deploy",
+          "when": "view == cdExplorer && viewItem == deploymentGroup",
+          "group": "deploymentGroup@1"
+        },
+        {
+          "command": "cdExplorer.stop",
+          "when": "view == cdExplorer && viewItem == deployment"
+        }
+      ]
+    },
+    "configuration": [
+      {
+        "title": "AWS CodeDeploy",
+        "properties": {
+          "codedeploy.region": {
+            "type": "string",
+            "enum": [
+              "eu-west-1",
+              "eu-west-2",
+              "eu-central-1",
+              "us-east-1",
+              "us-east-2",
+              "ap-south-1",
+              "ap-southeast-1",
+              "ap-southeast-2",
+              "ap-northeast-1",
+              "ap-northeast-2"
+            ],
+            "description": "AWS Region"
+          },
+          "codedeploy.applicationName": {
+            "type": "string",
+            "default": "",
+            "description": "Default AWS CodeDeploy application name for workspace",
+            "title": "AWS CodeDeploy Application Name"
+          },
+          "codedeploy.deploymentGroupName": {
+            "type": "string",
+            "description": "CodeDeploy Deployment Group"
+          },
+          "codedeploy.revisionBucket": {
+            "type": "string",
+            "description": "CodeDeploy Revision Bucket"
+          }
+        }
+      }
+    ]
+  },
+  "engines": {
+    "vscode": "^1.22.0"
+  },
+  "activationEvents": [
+    "onView:explorer",
+    "onView:cdExplorer"
+  ]
+}

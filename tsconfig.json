@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "rootDir": "src",
+        "outDir": "out",
+        "module": "commonjs",
+        "moduleResolution": "classic",
+        "sourceMap": true
+    },
+    "include": [
+        "./src/**/*",
+        "resources"
+    ],
+    "exclude": [
+        "node_modules",
+        ".vscode"
+    ]
+}
