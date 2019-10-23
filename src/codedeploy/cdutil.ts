@@ -288,17 +288,18 @@ export class CDUtil {
                 var response = await codedeploy.listDeployments(deploymentsparams).promise();
 
                 // TODO: Foreach deployment from listDeployments, create deployment object
-                response.deployments.forEach(element => {
-                    deployments.push(new CDDeployment(element, vscode.TreeItemCollapsibleState.None));
+               await response.deployments.forEach( (element) => {
+                    let deployment = new CDDeployment(`${element}`, vscode.TreeItemCollapsibleState.None)
+                    deployments.push(deployment);
                 });
 
                 this.Deployments = deployments;
-                return deployments.slice(1, 10);
+                return deployments.slice(1,10);
             })
 
     }
 
-    async viewDeployment(args: any[], thisArg?:any) {
+    async getDeployment(deploymentId: string){
         this.conf = vscode.workspace.getConfiguration("codedeploy");
 
         let codedeploy = new AWS.CodeDeploy({
@@ -307,10 +308,16 @@ export class CDUtil {
         });
 
         var params = {
-            deploymentId: 'd-2D76NV5FO' /* required */
+            deploymentId: deploymentId 
         };
 
         let response = await codedeploy.getDeployment(params).promise();
+        return response;
+    }
+
+    async viewDeployment(deploymentId: any) {        
+        
+        let response = await this.getDeployment(deploymentId);
         let document = await vscode.workspace.openTextDocument({ content: JSON.stringify(response, null, "\t"), language: "json" });
 
         await vscode.window.showTextDocument(document);

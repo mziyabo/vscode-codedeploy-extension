@@ -18,7 +18,7 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('cdExplorer.select', () => treeData.select());
     vscode.commands.registerCommand('cdExplorer.create', () => treeData.create());
 
-    vscode.commands.registerCommand('cdExplorer.viewDeployment', (args: any[]) => { treeData.cdUtil.viewDeployment(args) }, this);
+    vscode.commands.registerCommand('cdExplorer.viewDeployment', node => { treeData.viewDeployment(node) }, this);
 }
 
 export function deactivate() {

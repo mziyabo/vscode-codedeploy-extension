@@ -70,6 +70,14 @@
       {
         "command": "cdExplorer.viewDeployment",
         "title": "Details"
+      },
+      {
+        "command": "cdExplorer.deleteApplication",
+        "title": "Delete"
+      },
+      {
+        "command": "cdExplorer.configureRevisionLocations",
+        "title": "Configure Revision Locations"
       }
     ],
     "menus": {
@@ -103,6 +111,16 @@
       ],
       "view/item/context": [
         {
+          "command": "cdExplorer.deleteApplication",
+          "when": "view == cdExplorer && viewItem == application",
+          "group": "application@1"
+        },
+        {
+          "command": "cdExplorer.configureRevisionLocations",
+          "when": "view == cdExplorer && viewItem == application",
+          "group": "application_manage@2"
+        },
+        {
           "command": "cdExplorer.deploy",
           "when": "view == cdExplorer && viewItem == deploymentGroup",
           "group": "deploymentGroup@1"
@@ -116,6 +134,11 @@
           "command": "cdExplorer.viewDeployment",
           "when": "view == cdExplorer && viewItem == deployment",
           "group": "1_view_deployment"
+        },
+        {
+          "command": "cdExplorer.refresh",
+          "when": "view == cdExplorer",
+          "group": "z_extension"
         }
       ]
     },

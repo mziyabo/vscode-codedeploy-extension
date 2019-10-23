@@ -76,7 +76,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                         "label": "Deployment Groups",
                         "contextValue": "deploymentGroups"
                     }
-                    ,{
+                        , {
                         "label": "Deployments",
                         "contextValue": "deployments"
                     }];
@@ -96,7 +96,8 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                     break;
 
                 case "deployments":
-                    return this.cdUtil.getDeployments();
+                 return   this.cdUtil.getDeployments();
+                     
                     break;
 
                 default:
@@ -133,9 +134,13 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         }
     }
 
-    async deploy(){
+    async deploy() {
         this.cdUtil.deploy();
         this.refresh();
+    }
+
+    viewDeployment(node: any) {
+        this.cdUtil.viewDeployment(node.label);
     }
 
     /**
