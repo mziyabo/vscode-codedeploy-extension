@@ -65,7 +65,11 @@
       },
       {
         "command": "cdExplorer.stop",
-        "title": "Stop Deployment"
+        "title": "Stop"
+      },
+      {
+        "command": "cdExplorer.viewDeployment",
+        "title": "Details"
       }
     ],
     "menus": {
@@ -105,7 +109,13 @@
         },
         {
           "command": "cdExplorer.stop",
-          "when": "view == cdExplorer && viewItem == deployment"
+          "when": "view == cdExplorer && viewItem == deployment",
+          "group": "manage_deployment"
+        },
+        {
+          "command": "cdExplorer.viewDeployment",
+          "when": "view == cdExplorer && viewItem == deployment",
+          "group": "1_view_deployment"
         }
       ]
     },

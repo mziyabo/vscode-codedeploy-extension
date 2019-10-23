@@ -278,17 +278,42 @@ export class CDUtil {
             ]
         };
 
-        var response = await codedeploy.listDeployments(deploymentsparams).promise();
+        return vscode.window.withProgress({
+            cancellable: false,
+            title: "Fetching CodeDeploy Deployments",
+            location: vscode.ProgressLocation.Notification
+        }
+            , async (progress, token) => {
 
+                var response = await codedeploy.listDeployments(deploymentsparams).promise();
 
-        // TODO: Foreach deployment from listDeployments, create deployment object
-        response.deployments.forEach(element => {
-            deployments.push(new CDDeployment(element, vscode.TreeItemCollapsibleState.None));
+                // TODO: Foreach deployment from listDeployments, create deployment object
+                response.deployments.forEach(element => {
+                    deployments.push(new CDDeployment(element, vscode.TreeItemCollapsibleState.None));
+                });
+
+                this.Deployments = deployments;
+                return deployments.slice(1, 10);
+            })
+
+    }
+
+    async viewDeployment(args: any[], thisArg?:any) {
+        this.conf = vscode.workspace.getConfiguration("codedeploy");
+
+        let codedeploy = new AWS.CodeDeploy({
+            apiVersion: '2014-10-06',
+            region: this.conf.get("region")
         });
 
+        var params = {
+            deploymentId: 'd-2D76NV5FO' /* required */
+        };
 
-        this.Deployments = deployments;
-        return deployments;
+        let response = await codedeploy.getDeployment(params).promise();
+        let document = await vscode.workspace.openTextDocument({ content: JSON.stringify(response, null, "\t"), language: "json" });
+
+        await vscode.window.showTextDocument(document);
     }
 
 }
