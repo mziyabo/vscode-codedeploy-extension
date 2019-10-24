@@ -2,6 +2,7 @@ let AWS = require("aws-sdk");
 import * as vscode from 'vscode';
 import { CDApplication, CDDeploymentGroup, CDDeployment, AWSRegions } from "../model/model";
 import { S3Util } from "../s3/s3Util";
+import * as path from 'path';
 
 export class CDUtil {
 
@@ -253,9 +254,13 @@ export class CDUtil {
         return deploymentGroups;
     }
 
+    /**
+     * Retrieve CodeDeploy Deployments
+     */
     async getDeployments(): Promise<CDDeployment[]> {
 
-        var deployments = [];
+        var deployments: CDDeployment[] = [];
+        let deploymentDetails: CDDeployment[] = [];
         this.conf = vscode.workspace.getConfiguration("codedeploy");
 
         let codedeploy = new AWS.CodeDeploy({
@@ -278,28 +283,45 @@ export class CDUtil {
             ]
         };
 
-        return vscode.window.withProgress({
+        await vscode.window.withProgress({
             cancellable: false,
             title: "Fetching CodeDeploy Deployments",
             location: vscode.ProgressLocation.Notification
-        }
-            , async (progress, token) => {
+        }, async (progress, token) => {
 
-                var response = await codedeploy.listDeployments(deploymentsparams).promise();
+            var response = await codedeploy.listDeployments(deploymentsparams).promise();
 
-                // TODO: Foreach deployment from listDeployments, create deployment object
-               await response.deployments.forEach( (element) => {
-                    let deployment = new CDDeployment(`${element}`, vscode.TreeItemCollapsibleState.None)
-                    deployments.push(deployment);
-                });
+            // TODO: foreach deployment from listDeployments, create deployment object
+            await response.deployments.forEach(element => {
+                let deployment = new CDDeployment(`${element}`, vscode.TreeItemCollapsibleState.None)
+                deployments.push(deployment);
+            });
 
-                this.Deployments = deployments;
-                return deployments.slice(1,10);
-            })
+
+
+            let limit = deployments.length > 10 ? 10 : deployments.length;
+
+            for (let i = 0; i < limit; i++) {
+                let deployment = deployments[i];
+                let response = await this.getDeployment(deployments[i].label);
+                let deploymentInfo = response.deploymentInfo;
+
+                deployment.description = deploymentInfo.description ? `- ${deploymentInfo.description}` : ``;
+                deployment.tooltip = `${deploymentInfo.status} - ${deploymentInfo.completeTime}`;
+                if (deploymentInfo.status == "Failed") {
+                    // deployment.iconPath = vscode.Uri.file(path.join(__dirname, "../resources/light/error.svg"));
+                }
+
+                deploymentDetails.push(deployment);
+            }
+        })
+
+        return deploymentDetails;
 
     }
 
-    async getDeployment(deploymentId: string){
+    async getDeployment(deploymentId: string) {
+
         this.conf = vscode.workspace.getConfiguration("codedeploy");
 
         let codedeploy = new AWS.CodeDeploy({
@@ -308,15 +330,15 @@ export class CDUtil {
         });
 
         var params = {
-            deploymentId: deploymentId 
+            deploymentId: deploymentId
         };
 
         let response = await codedeploy.getDeployment(params).promise();
         return response;
     }
 
-    async viewDeployment(deploymentId: any) {        
-        
+    async viewDeployment(deploymentId: any) {
+
         let response = await this.getDeployment(deploymentId);
         let document = await vscode.workspace.openTextDocument({ content: JSON.stringify(response, null, "\t"), language: "json" });
 

@@ -96,8 +96,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                     break;
 
                 case "deployments":
-                 return   this.cdUtil.getDeployments();
-                     
+                    return this.cdUtil.getDeployments();
                     break;
 
                 default:
