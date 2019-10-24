@@ -69,26 +69,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
             var contextValue = element.contextValue;
             switch (contextValue) {
                 case "application":
-
-                    var treeItems = []
-
-                    var labels = [{
-                        "label": "Deployment Groups",
-                        "contextValue": "deploymentGroups"
-                    }
-                        , {
-                        "label": "Deployments",
-                        "contextValue": "deployments"
-                    }];
-
-                    labels.forEach(element => {
-                        var treeItem = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
-                        treeItem.contextValue = element.contextValue;
-
-                        treeItems.push(treeItem)
-                    });
-
-                    return treeItems;
+                    return this.applicationCtxTreeItems();
                     break;
 
                 case "deploymentGroups":
@@ -97,6 +78,12 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
 
                 case "deployments":
                     return this.cdUtil.getDeployments();
+                    break;
+
+                case "deployment":
+                    let targets = new vscode.TreeItem("Targets", vscode.TreeItemCollapsibleState.Collapsed);
+                    targets.iconPath = "Folder";
+                    return [targets];
                     break;
 
                 default:
@@ -114,6 +101,32 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                     return await this.cdUtil.getApplication()
                 });
         }
+    }
+
+    async applicationCtxTreeItems() {
+        var treeItems = []
+
+        var labels = [
+            {
+                "label": "Deployment Groups",
+                "contextValue": "deploymentGroups"
+            },
+            {
+                "label": "Deployment Configurations",
+                "contextValue": "deploymentConfigs"
+            }
+            , {
+                "label": "Deployments",
+                "contextValue": "deployments"
+            }];
+
+        labels.forEach(element => {
+            var treeItem = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
+            treeItem.contextValue = element.contextValue;
+
+            treeItems.push(treeItem)
+        });
+        return treeItems;
     }
 
     refresh(): void {

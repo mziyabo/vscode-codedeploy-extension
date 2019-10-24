@@ -293,11 +293,9 @@ export class CDUtil {
 
             // TODO: foreach deployment from listDeployments, create deployment object
             await response.deployments.forEach(element => {
-                let deployment = new CDDeployment(`${element}`, vscode.TreeItemCollapsibleState.None)
+                let deployment = new CDDeployment(`${element}`);
                 deployments.push(deployment);
             });
-
-
 
             let limit = deployments.length > 10 ? 10 : deployments.length;
 
@@ -306,10 +304,11 @@ export class CDUtil {
                 let response = await this.getDeployment(deployments[i].label);
                 let deploymentInfo = response.deploymentInfo;
 
-                deployment.description = deploymentInfo.description ? `- ${deploymentInfo.description}` : ``;
                 deployment.tooltip = `${deploymentInfo.status} - ${deploymentInfo.completeTime}`;
                 if (deploymentInfo.status == "Failed") {
-                    // deployment.iconPath = vscode.Uri.file(path.join(__dirname, "../resources/light/error.svg"));
+                    deployment.description = `- ${deploymentInfo.errorInformation.message}`;
+                    // TODO: fix icons issue
+                    deployment.iconPath = vscode.Uri.file(path.join(__dirname, "../resources/light/error.svg"));
                 }
 
                 deploymentDetails.push(deployment);
@@ -317,9 +316,12 @@ export class CDUtil {
         })
 
         return deploymentDetails;
-
     }
 
+    /**
+     * Retrieves CodeDeploy Deployment
+     * @param deploymentId 
+     */
     async getDeployment(deploymentId: string) {
 
         this.conf = vscode.workspace.getConfiguration("codedeploy");
@@ -337,6 +339,10 @@ export class CDUtil {
         return response;
     }
 
+    /**
+     * Displays CodeDeploy deployment information in TextDocument
+     * @param deploymentId 
+     */
     async viewDeployment(deploymentId: any) {
 
         let response = await this.getDeployment(deploymentId);
