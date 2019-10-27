@@ -19,7 +19,7 @@ export class CDUtil {
     private codedeploy;
     private conf = vscode.workspace.getConfiguration("codedeploy");
 
-    config:ConfigurationUtil = new ConfigurationUtil();
+    config: ConfigurationUtil = new ConfigurationUtil();
 
     constructor() {
     }
@@ -78,12 +78,12 @@ export class CDUtil {
                 ignoreFocusOut: true
             });
 
-            this._region = region.label? region.label: "";
+            this._region = region.label ? region.label : "";
             this._applicationName = await vscode.window.showInputBox({ prompt: "Enter Application Name" });
             this._deploymentGroupName = await vscode.window.showInputBox({ prompt: "Enter DeploymentGroup Name" });
 
             // Update Configuration
-            
+
             await this.conf.update("region", this._region);
             await this.conf.update("applicationName", this._applicationName);
             await this.conf.update("deploymentGroupName", this._deploymentGroupName);
@@ -307,6 +307,9 @@ export class CDUtil {
                     // TODO: fix icons issue, i.e. use themeicon instead
                     deployment.description = `- ${deploymentInfo.errorInformation.message}`;
                     deployment.iconPath = vscode.Uri.file(path.join(__dirname, "../resources/light/error.svg"));
+                }
+                else {
+                    deployment.iconPath = vscode.Uri.file(path.join(__dirname, "../resources/light/check.svg"));
                 }
 
                 deploymentDetails.push(deployment);
