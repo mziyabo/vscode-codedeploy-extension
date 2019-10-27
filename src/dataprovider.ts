@@ -1,8 +1,6 @@
-let AWS = require("aws-sdk");
 import * as vscode from 'vscode';
-import { CDApplication, CDDeploymentGroup, CDDeployment } from "./model/model";
+import { CDApplication } from "./models/cdmodels";
 import { CDUtil } from './codedeploy/cdutil';
-
 
 export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
@@ -18,32 +16,17 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
     }
 
     async getTreeItem(element: CDApplication): Promise<vscode.TreeItem> {
+
         this.conf = vscode.workspace.getConfiguration("codedeploy");
+
         if (!this.conf.get("applicationName")) {
             return;
         }
 
         if (!element) {
-
-            let codedeploy = new AWS.CodeDeploy({
-                apiVersion: '2014-10-06',
-                region: await this.conf.get("region")
-            });
-
-            // Get CodeDeploy Application
-            var applicationparams = {
-                applicationName: await this.conf.get("applicationName")
-            };
-            var response = await codedeploy.getApplication(applicationparams).promise();
-
-            let application: CDApplication;
-
-            if (response.application) {
-                application = new CDApplication(response.application.applicationName, vscode.TreeItemCollapsibleState.Collapsed);
-                application.Data = response;
-            }
-
+            let application: CDApplication = await this.cdUtil.getApplication();
             return application;
+
         } else {
             return element;
         }
@@ -59,7 +42,9 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
     }
 
     async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
+        
         this.conf = vscode.workspace.getConfiguration("codedeploy");
+        
         if (!this.conf.get("applicationName")) {
             return;
         }
@@ -98,7 +83,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                 title: "Fetching CodeDeploy application"
             },
                 async (progress, token) => {
-                    return await this.cdUtil.getApplication()
+                    return [await this.cdUtil.getApplication()]
                 });
         }
     }
@@ -153,15 +138,5 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
 
     viewDeployment(node: any) {
         this.cdUtil.viewDeployment(node.label);
-    }
-
-    /**
-    * Retrieve AWS CodeDeploy Application
-    */
-    async initialize() {
-        this.conf = vscode.workspace.getConfiguration("codedeploy");
-        if (this.conf.get("applicationName")) {
-            this.refresh();
-        }
     }
 }

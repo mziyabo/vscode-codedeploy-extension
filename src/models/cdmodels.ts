@@ -1,20 +1,5 @@
-let AWS = require("aws-sdk");
-import * as vscode from 'vscode';
 import * as path from 'path';
-
-export let AWSRegions: string[] = [
-    "eu-west-1",
-    "eu-west-2",
-    "eu-central-1",
-    "us-east-1",
-    "us-east-2",
-    "us-west-1",
-    "ap-south-1",
-    "ap-southeast-1",
-    "ap-southeast-2",
-    "ap-northeast-1",
-    "ap-northeast-2"
-];
+import * as vscode from 'vscode';
 
 export class CDApplication extends vscode.TreeItem {
 
@@ -63,5 +48,4 @@ export class CDDeployment extends vscode.TreeItem {
         super(_label, _collapsibleState)
         //TODO: initialize
     }
-
 }

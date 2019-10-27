@@ -2,23 +2,20 @@
 
 import * as vscode from 'vscode';
 import { CodeDeployTreeDataProvider } from './dataprovider'
-import { CDDeployment } from './model/model';
 
-let treeData: CodeDeployTreeDataProvider;
+let dataProvider: CodeDeployTreeDataProvider;
 
 export async function activate(context: vscode.ExtensionContext) {
 
-    let conf = vscode.workspace.getConfiguration("codedeploy");
+    dataProvider = new CodeDeployTreeDataProvider();
+    vscode.window.registerTreeDataProvider('cdExplorer', dataProvider);
 
-    treeData = new CodeDeployTreeDataProvider();
-    vscode.window.registerTreeDataProvider('cdExplorer', treeData);
+    vscode.commands.registerCommand('cdExplorer.deploy', () => dataProvider.deploy());
+    vscode.commands.registerCommand('cdExplorer.refresh', () => dataProvider.refresh());
+    vscode.commands.registerCommand('cdExplorer.select', () => dataProvider.select());
+    vscode.commands.registerCommand('cdExplorer.create', () => dataProvider.create());
 
-    vscode.commands.registerCommand('cdExplorer.deploy', () => { treeData.deploy(); });
-    vscode.commands.registerCommand('cdExplorer.refresh', () => { treeData.refresh(); });
-    vscode.commands.registerCommand('cdExplorer.select', () => treeData.select());
-    vscode.commands.registerCommand('cdExplorer.create', () => treeData.create());
-
-    vscode.commands.registerCommand('cdExplorer.viewDeployment', node => { treeData.viewDeployment(node) }, this);
+    vscode.commands.registerCommand('cdExplorer.viewDeployment', node => { dataProvider.viewDeployment(node) }, this);
 }
 
 export function deactivate() {

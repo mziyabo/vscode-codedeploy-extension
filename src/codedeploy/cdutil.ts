@@ -1,8 +1,10 @@
 let AWS = require("aws-sdk");
 import * as vscode from 'vscode';
-import { CDApplication, CDDeploymentGroup, CDDeployment, AWSRegions } from "../model/model";
+import { CDApplication, CDDeploymentGroup, CDDeployment } from "../models/cdmodels";
 import { S3Util } from "../s3/s3Util";
 import * as path from 'path';
+import { AWSRegions } from '../models/region';
+import { ConfigurationUtil } from '../shared/config/config';
 
 export class CDUtil {
 
@@ -15,10 +17,18 @@ export class CDUtil {
     private _region;
 
     private codedeploy;
-
     private conf = vscode.workspace.getConfiguration("codedeploy");
 
+    config:ConfigurationUtil = new ConfigurationUtil();
+
     constructor() {
+    }
+
+    /**
+     * Initialize/Update/Get/Refresh Global variables
+     */
+    initClient() {
+        this.conf = vscode.workspace.getConfiguration("codedeploy");
 
         this.codedeploy = new AWS.CodeDeploy({
             apiVersion: '2014-10-06',
@@ -30,12 +40,9 @@ export class CDUtil {
      * Returns CodeDeploy Application for Workspace
      * @return Promise<CDApplication[]>
      */
-    async getApplication(): Promise<CDApplication[]> {
-        this.conf = vscode.workspace.getConfiguration("codedeploy");
-        this.codedeploy = new AWS.CodeDeploy({
-            apiVersion: '2014-10-06',
-            region: this.conf.get("region")
-        });
+    async getApplication(): Promise<CDApplication> {
+
+        this.initClient();
 
         // Get CodeDeploy Application
         var applicationparams = {
@@ -49,10 +56,10 @@ export class CDUtil {
             let application = new CDApplication(response.application.applicationName, vscode.TreeItemCollapsibleState.Collapsed);
             application.Data = response;
             this.Application = application;
-            return [application];
+            return application;
         }
 
-        return [];
+        return;
     }
 
     /**
@@ -60,27 +67,29 @@ export class CDUtil {
      */
     async updateExtensionConfig() {
 
-        let conf = vscode.workspace.getConfiguration("codedeploy");
-        if (!conf.get("applicationName")) {
+        this.initClient();
 
-            // Get applicationName, deploymentGroupName and region
-            // _region = await vscode.window.showQuickPick(AWSRegions,{
-            //         canPickMany: false,
-            //         placeHolder: "Select AWS CodeDeploy Region",
-            //         ignoreFocusOut: true
-            //     });
+        if (!this.conf.get("applicationName")) {
 
-            this._region = await vscode.window.showInputBox({ prompt: "Enter AWS CodeDeploy Region e.g. us-east-1" });
+            //Get applicationName, deploymentGroupName and region
+            let region = await vscode.window.showQuickPick(AWSRegions.toQuickPickItemArray(), {
+                canPickMany: false,
+                placeHolder: "Select AWS CodeDeploy Region",
+                ignoreFocusOut: true
+            });
+
+            this._region = region.label? region.label: "";
             this._applicationName = await vscode.window.showInputBox({ prompt: "Enter Application Name" });
             this._deploymentGroupName = await vscode.window.showInputBox({ prompt: "Enter DeploymentGroup Name" });
 
             // Update Configuration
-            await conf.update("region", this._region);
-            await conf.update("applicationName", this._applicationName);
-            await conf.update("deploymentGroupName", this._deploymentGroupName);
+            
+            await this.conf.update("region", this._region);
+            await this.conf.update("applicationName", this._applicationName);
+            await this.conf.update("deploymentGroupName", this._deploymentGroupName);
         }
-        conf = vscode.workspace.getConfiguration("codedeploy");
-        return conf;
+        this.conf = vscode.workspace.getConfiguration("codedeploy");
+        return this.conf;
     }
 
     /**
@@ -89,7 +98,9 @@ export class CDUtil {
     async scaffoldApplication() {
 
         this.conf = vscode.workspace.getConfiguration("codedeploy");
-        await this.createApplication();
+
+        // TODO: abort ALL if request/s fails
+        let createAppResponse = await this.createApplication();
 
         let createDeploymentGp = await vscode.window.showQuickPick(["Yes", "No"], {
             placeHolder: "Create Deployment Group?",
@@ -98,14 +109,13 @@ export class CDUtil {
         if (createDeploymentGp == "Yes") {
             await this.createDeploymentGroup();
         }
+
+        // TODO: prompt to create deployment targets
     }
 
     async createApplication() {
 
-        this.codedeploy = new AWS.CodeDeploy({
-            apiVersion: '2014-10-06',
-            region: this.conf.get("region")
-        });
+        this.initClient();
 
         // CreateApplication
         var applicationParams = {
@@ -113,6 +123,7 @@ export class CDUtil {
             computePlatform: 'Server'
         };
 
+        // TODO: verify response result
         return vscode.window.withProgress(
             {
                 cancellable: false,
@@ -124,15 +135,14 @@ export class CDUtil {
             }
         );
 
-        // TODO: return fail/success
     }
 
+    /**
+     * Create CodeDeploy DeploymentGroup
+     */
     async createDeploymentGroup() {
 
-        this.codedeploy = new AWS.CodeDeploy({
-            apiVersion: '2014-10-06',
-            region: this.conf.get("region")
-        });
+        this.initClient();
 
         let serviceRoleARN: string = await vscode.window.showInputBox({
             prompt: "Enter CodeDeploy Service Role ARN:",
@@ -162,7 +172,7 @@ export class CDUtil {
                 let response = await this.codedeploy.createDeploymentGroup(params).promise();
                 return response;
             });
-        // TODO: spin up EC2 Instances
+
     }
 
     /**
@@ -170,14 +180,9 @@ export class CDUtil {
      */
     async deploy() {
 
-        this.conf = vscode.workspace.getConfiguration("codedeploy");
+        this.initClient();
 
-        this.codedeploy = new AWS.CodeDeploy({
-            apiVersion: '2014-10-06',
-            region: this.conf.get("region")
-        });
-
-        // Validate workspace contains appspec.yml
+        // TODO: validate workspace contains appspec.yml/ready
         if (await vscode.workspace.findFiles('./appspec.yml')) {
 
             // TODO: refactor, better manage revision location details
@@ -186,7 +191,7 @@ export class CDUtil {
             let revisionLocalDir = await vscode.window.showWorkspaceFolderPick({ placeHolder: "Enter Code Directory", ignoreFocusOut: true });
             let revisionName = await vscode.window.showInputBox({ prompt: "Enter Revision Name:", ignoreFocusOut: true });
 
-            // Archive revision and upload to s3
+            // archive revision and upload to s3
             let s3Util = new S3Util();
             let buffer = s3Util.archive(await revisionLocalDir.uri.fsPath);
 
@@ -231,10 +236,7 @@ export class CDUtil {
 
     async getDeploymentGroup(): Promise<CDDeploymentGroup[]> {
 
-        this.codedeploy = new AWS.CodeDeploy({
-            apiVersion: '2014-10-06',
-            region: this.conf.get("region")
-        });
+        this.initClient();
 
         var deploymentGroups = [];
 
@@ -259,14 +261,10 @@ export class CDUtil {
      */
     async getDeployments(): Promise<CDDeployment[]> {
 
+        this.initClient();
+
         var deployments: CDDeployment[] = [];
         let deploymentDetails: CDDeployment[] = [];
-        this.conf = vscode.workspace.getConfiguration("codedeploy");
-
-        let codedeploy = new AWS.CodeDeploy({
-            apiVersion: '2014-10-06',
-            region: this.conf.get("region")
-        });
 
         // Get Deployments
         var deploymentsparams = {
@@ -289,7 +287,7 @@ export class CDUtil {
             location: vscode.ProgressLocation.Notification
         }, async (progress, token) => {
 
-            var response = await codedeploy.listDeployments(deploymentsparams).promise();
+            var response = await this.codedeploy.listDeployments(deploymentsparams).promise();
 
             // TODO: foreach deployment from listDeployments, create deployment object
             await response.deployments.forEach(element => {
@@ -306,8 +304,8 @@ export class CDUtil {
 
                 deployment.tooltip = `${deploymentInfo.status} - ${deploymentInfo.completeTime}`;
                 if (deploymentInfo.status == "Failed") {
+                    // TODO: fix icons issue, i.e. use themeicon instead
                     deployment.description = `- ${deploymentInfo.errorInformation.message}`;
-                    // TODO: fix icons issue
                     deployment.iconPath = vscode.Uri.file(path.join(__dirname, "../resources/light/error.svg"));
                 }
 
@@ -324,23 +322,18 @@ export class CDUtil {
      */
     async getDeployment(deploymentId: string) {
 
-        this.conf = vscode.workspace.getConfiguration("codedeploy");
-
-        let codedeploy = new AWS.CodeDeploy({
-            apiVersion: '2014-10-06',
-            region: this.conf.get("region")
-        });
+        this.initClient();
 
         var params = {
             deploymentId: deploymentId
         };
 
-        let response = await codedeploy.getDeployment(params).promise();
+        let response = await this.codedeploy.getDeployment(params).promise();
         return response;
     }
 
     /**
-     * Displays CodeDeploy deployment information in TextDocument
+     * Displays CodeDeploy DeploymentInformation in a TextDocument for given deploymentId
      * @param deploymentId 
      */
     async viewDeployment(deploymentId: any) {
