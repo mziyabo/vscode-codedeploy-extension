@@ -1,39 +1,45 @@
 let AWS = require("aws-sdk");
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { CDApplication, CDDeploymentGroup, CDDeployment } from "../models/cdmodels";
 import { S3Util } from "../s3/s3Util";
-import * as path from 'path';
 import { AWSRegions } from '../models/region';
 import { ConfigurationUtil } from '../shared/config/config';
+import { Dialog } from '../shared/ui/dialog';
 
 export class CDUtil {
 
     public Application: CDApplication;
-    public DeploymentGroup: CDDeploymentGroup;
     public Deployments: CDDeployment[];
+    public DeploymentGroup: CDDeploymentGroup;
 
+    private codedeploy;
     private _applicationName;
     private _deploymentGroupName;
     private _region;
 
-    private codedeploy;
+    config: ConfigurationUtil;
     private conf = vscode.workspace.getConfiguration("codedeploy");
 
-    config: ConfigurationUtil = new ConfigurationUtil();
-
     constructor() {
+        this.config = new ConfigurationUtil();
     }
 
     /**
      * Initialize/Update/Get/Refresh Global variables
      */
-    initClient() {
+    async initClient() {
+
         this.conf = vscode.workspace.getConfiguration("codedeploy");
 
-        this.codedeploy = new AWS.CodeDeploy({
-            apiVersion: '2014-10-06',
-            region: this.conf.get("region")
-        });
+        if (this.conf.get("region")) {
+
+            this.codedeploy = new AWS.CodeDeploy({
+                apiVersion: '2014-10-06',
+                region: this.conf.get("region")
+            });
+        }
+
     }
 
     /**
@@ -62,34 +68,37 @@ export class CDUtil {
         return;
     }
 
-    /**
-     * Select/Use existing CodeDeploy application for WorkSpace
-     */
-    async updateExtensionConfig() {
 
-        this.initClient();
+    async getExistingCodeDeploy() {
 
-        if (!this.conf.get("applicationName")) {
+        // TODO: check if an application is associated with the workspace already
+        let dialog: Dialog = new Dialog();
 
-            //Get applicationName, deploymentGroupName and region
-            let region = await vscode.window.showQuickPick(AWSRegions.toQuickPickItemArray(), {
+        dialog.addPrompt("_region", async () => {
+            return await vscode.window.showQuickPick(AWSRegions.toQuickPickItemArray(), {
                 canPickMany: false,
                 placeHolder: "Select AWS CodeDeploy Region",
                 ignoreFocusOut: true
             });
+        });
 
-            this._region = region.label ? region.label : "";
-            this._applicationName = await vscode.window.showInputBox({ prompt: "Enter Application Name" });
-            this._deploymentGroupName = await vscode.window.showInputBox({ prompt: "Enter DeploymentGroup Name" });
+        dialog.addPrompt("_applicationName", async () => { return await vscode.window.showInputBox({ prompt: "Enter Application Name" }) })
+        dialog.addPrompt("_deploymentGroupName", async () => { return await vscode.window.showInputBox({ prompt: "Enter DeploymentGroup Name" }) })
+
+        await dialog.run();
+
+        if (!dialog.cancelled) {
+            // Do Work 
+            this._region = dialog.getResponse("_region");
+            this._applicationName = dialog.getResponse("_applicationName");
+            this._deploymentGroupName = dialog.getResponse("_deploymentGroupName");
 
             // Update Configuration
-
             await this.conf.update("region", this._region);
             await this.conf.update("applicationName", this._applicationName);
             await this.conf.update("deploymentGroupName", this._deploymentGroupName);
+
         }
-        this.conf = vscode.workspace.getConfiguration("codedeploy");
-        return this.conf;
     }
 
     /**
@@ -97,44 +106,67 @@ export class CDUtil {
      */
     async scaffoldApplication() {
 
-        this.conf = vscode.workspace.getConfiguration("codedeploy");
-
-        // TODO: abort ALL if request/s fails
+        // TODO: abort(clear configuration settings) if CreateApplication fails
         let createAppResponse = await this.createApplication();
 
         let createDeploymentGp = await vscode.window.showQuickPick(["Yes", "No"], {
             placeHolder: "Create Deployment Group?",
             ignoreFocusOut: true
         });
+
         if (createDeploymentGp == "Yes") {
             await this.createDeploymentGroup();
+            // TODO: prompt to create deployment targets
         }
-
-        // TODO: prompt to create deployment targets
     }
 
     async createApplication() {
 
-        this.initClient();
+        let dialog: Dialog = new Dialog();
 
-        // CreateApplication
-        var applicationParams = {
-            applicationName: this._applicationName,
-            computePlatform: 'Server'
-        };
+        dialog.addPrompt("_region", async () => {
+            return await vscode.window.showQuickPick(AWSRegions.toQuickPickItemArray(), {
+                canPickMany: false,
+                placeHolder: "Select AWS CodeDeploy Region",
+                ignoreFocusOut: true
+            });
+        });
 
-        // TODO: verify response result
-        return vscode.window.withProgress(
-            {
-                cancellable: false,
-                title: "Creating CodeDeploy Application",
-                location: vscode.ProgressLocation.Notification
-            }, async (progress, token) => {
-                let response = await this.codedeploy.createApplication(applicationParams).promise();
-                return response;
-            }
-        );
+        dialog.addPrompt("_applicationName", async () => { return await vscode.window.showInputBox({ prompt: "Enter Application Name" }) })
+        dialog.run();
 
+        if (!dialog.cancelled) {
+
+            this._region = dialog.getResponse("_region");
+            this._applicationName = dialog.getResponse("_applicationName");
+
+            // Update Configuration
+            await this.conf.update("region", this._region);
+            await this.conf.update("applicationName", this._applicationName);
+
+            this.initClient();
+
+            // CreateApplication
+            var applicationParams = {
+                applicationName: this._applicationName,
+                computePlatform: 'Server'
+            };
+
+            return vscode.window.withProgress(
+                {
+                    cancellable: false,
+                    title: "Creating CodeDeploy Application",
+                    location: vscode.ProgressLocation.Notification
+                }, async (progress, token) => {
+
+                    let response = await this.codedeploy.createApplication(applicationParams).promise();
+                    return response;
+                }
+            );
+        }
+        else {
+            return undefined;
+        }
     }
 
     /**
@@ -342,9 +374,30 @@ export class CDUtil {
     async viewDeployment(deploymentId: any) {
 
         let response = await this.getDeployment(deploymentId);
-        let document = await vscode.workspace.openTextDocument({ content: JSON.stringify(response, null, "\t"), language: "json" });
 
-        await vscode.window.showTextDocument(document);
+        let uri = vscode.Uri.parse("untitled:" + path.join(`${deploymentId}.json`));
+        vscode.workspace.openTextDocument(uri).then(document => {
+            const edit = new vscode.WorkspaceEdit();
+            edit.insert(uri, new vscode.Position(0, 0), JSON.stringify(response, null, "\t"));
+            return vscode.workspace.applyEdit(edit).then(success => {
+                if (success) {
+                    vscode.window.showTextDocument(document);
+                } else {
+                    vscode.window.showInformationMessage('Error!');
+                }
+            });
+        });
+
+    }
+
+    configureRevisionLocations() {
+        // TODO:
+        throw new Error("Method not implemented.");
+    }
+
+    delete(node: vscode.TreeItem) {
+        // TODO:
+        throw new Error("Method not implemented.");
     }
 
 }

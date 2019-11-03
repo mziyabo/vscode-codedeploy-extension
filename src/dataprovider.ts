@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { CDApplication } from "./models/cdmodels";
 import { CDUtil } from './codedeploy/cdutil';
+import { Dialog } from './shared/ui/dialog';
 
 export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
@@ -42,14 +43,17 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
     }
 
     async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
-        
+
         this.conf = vscode.workspace.getConfiguration("codedeploy");
-        
+
         if (!this.conf.get("applicationName")) {
+            await this.conf.update("linkedToCodedeployApplication", false);
             return;
         }
 
+        await this.conf.update("linkedToCodedeployApplication", true);
         if (element) {
+
 
             var contextValue = element.contextValue;
             switch (contextValue) {
@@ -119,20 +123,60 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
     }
 
     async select() {
-        this.conf = await this.cdUtil.updateExtensionConfig();
+        await this.cdUtil.getExistingCodeDeploy();
         this.refresh();
     }
 
     async create() {
-        this.conf = await this.cdUtil.updateExtensionConfig();
-        if (this.conf.get("applicationName")) {
-            await this.cdUtil.scaffoldApplication();
-            this.refresh();
-        }
+        await this.cdUtil.scaffoldApplication();
+        this.refresh();
     }
 
     async deploy() {
         this.cdUtil.deploy();
+        this.refresh();
+    }
+
+    openConsole(node: any): any {
+
+        let uri: string;
+
+        if (this.conf.get("linkedToCodedeployApplication") && node != undefined) {
+            uri = `${this.conf.get("region")}.console.aws.amazon.com/codesuite/codedeploy`;
+
+            switch (node.contextValue) {
+                case "application":
+                    uri = uri + `/applications/${node.label}`;
+                    break;
+
+                case "deployment":
+                    uri = uri + `/deployments/${node.label}`;
+                    break;
+
+                case "deployments":
+                    uri = uri + `/deployments/`;
+                    break;
+
+                case "deploymentGroup":
+                        uri = uri + `/applications/${this.conf.get("applicationName")}/deployment-groups/${node.label}`;
+                    break;
+
+            }
+        }
+        else {
+            uri = `console.aws.amazon.com/codesuite/codedeploy/start?`;
+        }
+        
+        vscode.commands.executeCommand('vscode.open', vscode.Uri.parse("https://"+uri));
+    }
+
+    configureRevisionLocations(): any {
+        this.cdUtil.configureRevisionLocations();
+    }
+
+    delete(node: vscode.TreeItem) {
+
+        this.cdUtil.delete(node);
         this.refresh();
     }
 

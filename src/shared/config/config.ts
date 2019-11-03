@@ -23,4 +23,9 @@ export class ConfigurationUtil {
     async update(key: string, value: any) {
         await this.conf.update(key, value);
     }
+
+    async clear() {
+        // TODO: implement clear all configuration settings
+        throw "NotImplementedException: clear Not Implemented"
+    }
 }
