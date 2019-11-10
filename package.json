@@ -83,6 +83,16 @@
       {
         "command": "cdExplorer.configureRevisionLocations",
         "title": "Configure Revision Locations"
+      },
+      {
+        "command": "cdExplorer.addEC2Tag",
+        "title": "Add EC2 Tag Filter",
+        "enablement": "viewItem == ec2TagFilters"
+      },
+      {
+        "command": "cdExplorer.addASG",
+        "title": "Add AutoScaling Group",
+        "enablement": "viewItem == autoScalingGroups"
       }
     ],
     "menus": {
@@ -144,6 +154,16 @@
           "command": "cdExplorer.refresh",
           "when": "view == cdExplorer",
           "group": "z_extension"
+        },
+        {
+          "command": "cdExplorer.addEC2Tag",
+          "when": "viewItem == ec2TagFilters",
+          "group": "ec2TagManage@1"
+        },
+        {
+          "command": "cdExplorer.addASG",
+          "when": "viewItem == autoScalingGroups",
+          "group": "asgManage@1"
         }
       ]
     },

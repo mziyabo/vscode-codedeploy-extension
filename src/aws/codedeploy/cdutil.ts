@@ -8,8 +8,10 @@ import { ConfigurationUtil } from '../../shared/configuration/config';
 import { Dialog } from '../../shared/ui/dialog';
 import { QuickPickItem } from '../../shared/ui/quickpickitem';
 import { TreeItemUtil } from '../../shared/ui/treeItemUtil';
+import { stringify } from 'querystring';
 
 export class CDUtil {
+
 
     public Application: CDApplication;
     public Deployments: CDDeployment[];
@@ -468,8 +470,6 @@ export class CDUtil {
 
         if (listResponse.targetIds.length > 0) {
 
-
-
             // Get Target Details
             let batchTargetParams = {
                 deploymentId: deploymentId,
@@ -499,15 +499,14 @@ export class CDUtil {
                         default:
                             break;
                     }
-
                     targets.push(treeitem);
                 }
-
             });
 
             return targets;
         }
     }
+
     async getDeploymentGroupInfoTreeItem(deploymentGroupName: string): Promise<vscode.TreeItem[]> {
 
         let deploymentGroups = await this.getDeploymentGroup();
@@ -517,21 +516,97 @@ export class CDUtil {
             let dg = deploymentGroups[0];
 
             properties.push(TreeItemUtil.addProperty("Deployment Configuration", dg.Data.deploymentConfigName));
-            properties.push(TreeItemUtil.addProperty("Service Role ARN", dg.Data.serviceRoleARN));
+            properties.push(TreeItemUtil.addProperty("Service Role ARN", dg.Data.serviceRoleArn));
 
-            properties.push(TreeItemUtil.addCollapsedItem("AutoScaling Groups", "autoscalinggroups"));
+            properties.push(TreeItemUtil.addCollapsedItem("AutoScaling Groups", "autoScalingGroups"));
             properties.push(TreeItemUtil.addCollapsedItem("EC2 tag filters", "ec2TagFilters"));
         }
 
         return properties;
     }
 
-    addTreeItemProp(key: string, value: string): vscode.TreeItem {
+    /**
+     * Add EC2 Tag Filter
+     */
+    async addEC2Tag() {
 
-        let treeItem = new vscode.TreeItem(`${key}=${value}`, vscode.TreeItemCollapsibleState.None);
-        treeItem.iconPath = vscode.Uri.file(path.join(__dirname, "../../resources/light/constant.svg"));
+        let dialog: Dialog = new Dialog();
 
-        return treeItem;
+        dialog.addPrompt("tagName", async () => { return await vscode.window.showInputBox({ prompt: "Enter EC2 Tag Filter Name:", ignoreFocusOut: true }) });
+        dialog.addPrompt("tagValue", async () => { return await vscode.window.showInputBox({ prompt: "Enter EC2 Tag Filter Value:", ignoreFocusOut: true }) });
 
+        await dialog.run();
+
+        if (!dialog.cancelled) {
+
+            this.initClient();
+
+            let dg: CDDeploymentGroup[] = await this.getDeploymentGroup();
+            let existingFilters = dg[0].Data.ec2TagFilters ? dg[0].Data.ec2TagFilters : [];
+
+            let tag = {
+                Key: dialog.getResponse("tagName"),
+                Value: dialog.getResponse("tagValue"),
+                Type: "KEY_AND_VALUE"
+            }
+
+            existingFilters.push(tag);
+
+            let params = {
+                ec2TagFilters: existingFilters,
+                applicationName: this.conf.get("applicationName"),
+                currentDeploymentGroupName: this.conf.get("deploymentGroupName")
+            }
+
+            await this.codedeploy.updateDeploymentGroup(params).promise();
+            console.log(`EC2 Tag Filters added`);
+        }
+    }
+
+    async listEC2TagFilters() {
+
+        let dg = await this.getDeploymentGroup();
+
+        let tagFilters: vscode.TreeItem[] = [];
+        // TODO: Check if ec2TagSet/ec2TagFilters is undefined
+        dg[0].Data.ec2TagFilters.forEach(filter => {
+            tagFilters.push(TreeItemUtil.addProperty(filter.Key, filter.Value, undefined, false))
+        });
+
+        return tagFilters;
+    }
+
+    /**
+     * Add ASG to Deployment Group
+     */
+    async addASG() {
+
+        let dialog: Dialog = new Dialog();
+
+        dialog.addPrompt("asgName", async () => {
+            //TODO: user QuickPickItem for ASGs
+            await vscode.window.showInputBox({ prompt: "Enter AutoScaling Group Name:", ignoreFocusOut: true })
+        });
+
+        dialog.run();
+
+        if (!dialog.cancelled) {
+
+            this.initClient();
+
+            let dg: CDDeploymentGroup = await this.getDeploymentGroup()[0];
+            let existingASGs: string[] = dg.Data.autoScalingGroups;
+
+            existingASGs.push(dialog.getResponse("asgName"));
+
+            let params = {
+                autoScalingGroups: existingASGs,
+                applicationName: this.conf.get("applicationName"),
+                deploymentGroupName: this.conf.get("deploymentGroupName")
+            }
+
+            await this.codedeploy.updateDeploymentGroup(params).promise();
+            console.log(`ASG added to Deployment Group`);
+        }
     }
 }

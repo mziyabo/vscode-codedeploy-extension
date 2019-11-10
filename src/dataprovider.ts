@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { CDApplication } from "./models/cdmodels";
 import { CDUtil } from './aws/codedeploy/cdutil';
+import { TreeItemUtil } from './shared/ui/treeItemUtil';
 
 export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
@@ -57,7 +58,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
             var contextValue = element.contextValue;
             switch (contextValue) {
                 case "application":
-                    return this.applicationCtxTreeItems();
+                    return this.applicationTreeItems();
                     break;
 
                 case "deploymentGroups":
@@ -65,7 +66,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                     break;
 
                 case "deploymentGroup":
-                        return this.cdUtil.getDeploymentGroupInfoTreeItem(element.label);
+                    return this.cdUtil.getDeploymentGroupInfoTreeItem(element.label);
                     break;
 
                 case "deployments":
@@ -76,15 +77,18 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                     return this.cdUtil.getDeploymentTargetTreeItems(element.label);
                     break;
 
+                case "ec2TagFilters":
+                    return this.cdUtil.listEC2TagFilters();
+                    break;
+
                 default:
                     break;
             }
         }
         else {
-
             return vscode.window.withProgress({
                 cancellable: false,
-                location: vscode.ProgressLocation.Notification,
+                location: vscode.ProgressLocation.Window,
                 title: "Fetching CodeDeploy application"
             },
                 async (progress, token) => {
@@ -93,10 +97,11 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         }
     }
 
-    async applicationCtxTreeItems() {
-        var treeItems = []
+    applicationTreeItems() {
 
-        var labels = [
+        let treeItems: vscode.TreeItem[] = [];
+
+        let labels = [
             {
                 "label": "Deployment Groups",
                 "contextValue": "deploymentGroups"
@@ -108,11 +113,9 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         ];
 
         labels.forEach(element => {
-            var treeItem = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
-            treeItem.contextValue = element.contextValue;
-
-            treeItems.push(treeItem)
+            treeItems.push(TreeItemUtil.addCollapsedItem(element.label, element.contextValue));
         });
+
         return treeItems;
     }
 
@@ -171,9 +174,19 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         this.cdUtil.configureRevisionLocations();
     }
 
-    delete(node: vscode.TreeItem) {
+    async addASG() {
+        await this.cdUtil.addASG();
+        this.refresh();
+    }
 
-        this.cdUtil.delete(node);
+    async addEC2Tag() {
+        await this.cdUtil.addEC2Tag();
+        this.refresh();
+    }
+
+    async delete(node: vscode.TreeItem) {
+
+        await this.cdUtil.delete(node);
         this.refresh();
     }
 
