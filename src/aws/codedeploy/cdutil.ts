@@ -1,11 +1,13 @@
 let AWS = require("aws-sdk");
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { CDApplication, CDDeploymentGroup, CDDeployment } from "../models/cdmodels";
+import { CDApplication, CDDeploymentGroup, CDDeployment } from "../../models/cdmodels";
 import { S3Util } from "../s3/s3Util";
-import { AWSRegions } from '../models/region';
-import { ConfigurationUtil } from '../shared/config/config';
-import { Dialog } from '../shared/ui/dialog';
+import { AWSRegions } from '../../models/region';
+import { ConfigurationUtil } from '../../shared/configuration/config';
+import { Dialog } from '../../shared/ui/dialog';
+import { QuickPickItem } from '../../shared/ui/quickpickitem';
+import { TreeItemUtil } from '../../shared/ui/treeItemUtil';
 
 export class CDUtil {
 
@@ -133,7 +135,7 @@ export class CDUtil {
         });
 
         dialog.addPrompt("_applicationName", async () => { return await vscode.window.showInputBox({ prompt: "Enter Application Name" }) })
-        dialog.run();
+        await dialog.run();
 
         if (!dialog.cancelled) {
 
@@ -207,65 +209,98 @@ export class CDUtil {
 
     }
 
+
     /**
-     * Deploy Workspace Code to AWS CodeDeploy
+     * Set revision bucket and local directory to use
+     */
+    async configureRevisionLocations() {
+
+        let dialog: Dialog = new Dialog();
+        let bucket: string = this.conf.get("s3LocationBucket");
+
+        let s3: S3Util = new S3Util();
+        let buckets: QuickPickItem[] = await s3.getS3BucketsAsQuickItem();
+
+        dialog.addPrompt("bucket", () => {
+
+            return vscode.window.showQuickPick(buckets, {
+                canPickMany: false,
+                placeHolder: "Select S3 Revision Bucket",
+                ignoreFocusOut: true
+            })
+        });
+
+        dialog.addPrompt("localDir", async () => {
+            return await vscode.window.showWorkspaceFolderPick({ placeHolder: "Enter Local Revision Location:", ignoreFocusOut: true })
+        });
+
+        await dialog.run();
+
+        this.conf = vscode.workspace.getConfiguration("codedeploy");
+
+        if (!dialog.cancelled) {
+
+            this.conf.update("revisionBucket", dialog.getResponse("bucket"));
+            this.conf.update("revisionLocalDirectory", dialog.getResponse("localDir").uri.fsPath);
+        }
+
+        return dialog.cancelled;
+
+    }
+
+    /**
+     * Deploy CodeDeploy Application
      */
     async deploy() {
 
+        let revisionName = await vscode.window.showInputBox({ prompt: "Enter Revision Name:", ignoreFocusOut: true });
+        if (!revisionName) return;
+
+        let cancelled: Boolean = await this.configureRevisionLocations();
+        if (cancelled) return;
+
         this.initClient();
 
-        // TODO: validate workspace contains appspec.yml/ready
-        if (await vscode.workspace.findFiles('./appspec.yml')) {
+        // Archive revision and upload to s3
+        let s3Util = new S3Util();
+        let buffer = s3Util.archive(await this.conf.get("revisionLocalDirectory"));
+        let revisionEtag: string = await s3Util.upload(buffer, this.conf.get("revisionBucket"), revisionName);
 
-            // TODO: refactor, better manage revision location details
-            let revisionBucket: string = this.conf.get("s3LocationBucket");
-            revisionBucket = await vscode.window.showInputBox({ prompt: "Enter CodeDeploy BucketName:", value: revisionBucket, ignoreFocusOut: true });
-            let revisionLocalDir = await vscode.window.showWorkspaceFolderPick({ placeHolder: "Enter Code Directory", ignoreFocusOut: true });
-            let revisionName = await vscode.window.showInputBox({ prompt: "Enter Revision Name:", ignoreFocusOut: true });
+        if (revisionEtag) {
 
-            // archive revision and upload to s3
-            let s3Util = new S3Util();
-            let buffer = s3Util.archive(await revisionLocalDir.uri.fsPath);
-
-            let revisionEtag: string = await s3Util.upload(buffer, revisionBucket, revisionName);
-
-            if (revisionEtag) {
-
-                // Create Deployment
-                var params = {
-                    applicationName: this.conf.get("applicationName"), /* required */
-                    deploymentGroupName: this.conf.get("deploymentGroupName"),
-                    revision: {
-                        s3Location: {
-                            bucket: revisionBucket,
-                            key: revisionName,
-                            eTag: revisionEtag,
-                            bundleType: "zip"
-                        },
-                        revisionType: "S3"
-                    }
+            // Create Deployment
+            var params = {
+                applicationName: this.conf.get("applicationName"), /* required */
+                deploymentGroupName: this.conf.get("deploymentGroupName"),
+                revision: {
+                    s3Location: {
+                        bucket: this.conf.get("revisionBucket"),
+                        key: revisionName,
+                        eTag: revisionEtag,
+                        bundleType: "zip"
+                    },
+                    revisionType: "S3"
                 }
-
-                vscode.window.withProgress({
-                    cancellable: false,
-                    title: "Creating CodeDeploy Application",
-                    location: vscode.ProgressLocation.Notification
-                }
-                    , async (progress, token) => {
-
-                        let response = await this.codedeploy.createDeployment(params).promise();
-                        console.log(`Deployment Started ${response}`)
-                    });
             }
-        }
-        else {
 
-            // TODO: throw appspec required exception
-            vscode.window.showErrorMessage("CodeDeploy missing required appspec.yml file")
+            vscode.window.withProgress({
+                cancellable: false,
+                title: "Creating CodeDeploy Application",
+                location: vscode.ProgressLocation.Window
+            }
+                , async (progress, token) => {
+
+                    let response = await this.codedeploy.createDeployment(params).promise();
+                    console.log(`Deployment Started ${response}`)
+                });
         }
 
     }
 
+
+    /**
+     * Get Deployment Group
+     */
     async getDeploymentGroup(): Promise<CDDeploymentGroup[]> {
 
         this.initClient();
@@ -282,6 +317,7 @@ export class CDUtil {
 
         if (response.deploymentGroupInfo) {
             this.DeploymentGroup = new CDDeploymentGroup(response.deploymentGroupInfo.deploymentGroupName);
+            this.DeploymentGroup.Data = response.deploymentGroupInfo;
             deploymentGroups = [this.DeploymentGroup];
         }
 
@@ -295,7 +331,6 @@ export class CDUtil {
 
         this.initClient();
 
-        var deployments: CDDeployment[] = [];
         let deploymentDetails: CDDeployment[] = [];
 
         // Get Deployments
@@ -316,39 +351,64 @@ export class CDUtil {
         await vscode.window.withProgress({
             cancellable: false,
             title: "Fetching CodeDeploy Deployments",
-            location: vscode.ProgressLocation.Notification
+            location: vscode.ProgressLocation.Window
         }, async (progress, token) => {
 
             var response = await this.codedeploy.listDeployments(deploymentsparams).promise();
 
-            // TODO: foreach deployment from listDeployments, create deployment object
-            await response.deployments.forEach(element => {
-                let deployment = new CDDeployment(`${element}`);
-                deployments.push(deployment);
+            let deploymentIds: string[] = [];
+
+            await response.deployments.forEach(deploymentId => {
+                deploymentIds.push(deploymentId);
             });
 
-            let limit = deployments.length > 10 ? 10 : deployments.length;
+            let limit = deploymentIds.length > 10 ? 10 : deploymentIds.length;
 
-            for (let i = 0; i < limit; i++) {
-                let deployment = deployments[i];
-                let response = await this.getDeployment(deployments[i].label);
-                let deploymentInfo = response.deploymentInfo;
+            let _deployments = await this.batchGetDeployments(deploymentIds.slice(0, limit));
+            _deployments.forEach(deployment => {
 
-                deployment.tooltip = `${deploymentInfo.status} - ${deploymentInfo.completeTime}`;
-                if (deploymentInfo.status == "Failed") {
-                    // TODO: fix icons issue, i.e. use themeicon instead
-                    deployment.description = `- ${deploymentInfo.errorInformation.message}`;
-                    deployment.iconPath = vscode.Uri.file(path.join(__dirname, "../resources/light/error.svg"));
+                deployment.tooltip = `${deployment.Data.status} - ${deployment.Data.completeTime}`;
+
+                if (deployment.Data.status == "Failed") {
+
+                    // TODO: fix icons issue
+                    deployment.description = `- ${deployment.Data.errorInformation.message}`;
+                    deployment.iconPath = vscode.Uri.file(path.join(__dirname, "../../resources/light/error.svg"));
                 }
                 else {
-                    deployment.iconPath = vscode.Uri.file(path.join(__dirname, "../resources/light/check.svg"));
+                    deployment.iconPath = vscode.Uri.file(path.join(__dirname, "../../resources/light/success.svg"));
                 }
 
                 deploymentDetails.push(deployment);
-            }
+            });
         })
 
         return deploymentDetails;
+    }
+
+    /**
+     * 
+     * @param deploymentIds 
+     */
+    async batchGetDeployments(deploymentIds: string[]): Promise<CDDeployment[]> {
+
+        let deployments: CDDeployment[] = [];
+        this.initClient();
+
+        let params = {
+            deploymentIds: deploymentIds
+        }
+
+        let response = await this.codedeploy.batchGetDeployments(params).promise();
+
+        response.deploymentsInfo.forEach(deployment => {
+            let d: CDDeployment = new CDDeployment(deployment.deploymentId);
+            d.Data = deployment;
+
+            deployments.push(d);
+        });
+
+        return deployments;
     }
 
     /**
@@ -359,7 +419,7 @@ export class CDUtil {
 
         this.initClient();
 
-        var params = {
+        let params = {
             deploymentId: deploymentId
         };
 
@@ -390,14 +450,88 @@ export class CDUtil {
 
     }
 
-    configureRevisionLocations() {
-        // TODO:
-        throw new Error("Method not implemented.");
-    }
-
     delete(node: vscode.TreeItem) {
         // TODO:
         throw new Error("Method not implemented.");
     }
 
+    async getDeploymentTargetTreeItems(deploymentId: string): Promise<vscode.TreeItem[]> {
+
+        this.initClient();
+
+        // List Targets
+        let listParams = {
+            deploymentId: deploymentId
+        };
+
+        let listResponse = await this.codedeploy.listDeploymentTargets(listParams).promise();
+
+        if (listResponse.targetIds.length > 0) {
+
+
+
+            // Get Target Details
+            let batchTargetParams = {
+                deploymentId: deploymentId,
+                targetIds: listResponse.targetIds
+            }
+
+            let batchTargetResponse = await this.codedeploy.batchGetDeploymentTargets(batchTargetParams).promise();
+
+            let targets: vscode.TreeItem[] = [];
+
+            batchTargetResponse.deploymentTargets.forEach(target => {
+                // Create Target TreeItems
+                if (target.deploymentTargetType == "InstanceTarget") {
+
+                    let treeitem = TreeItemUtil.addCollapsedItem(target.instanceTarget.targetId, "instancetarget");
+                    treeitem.tooltip = `${target.instanceTarget.status} - ${target.instanceTarget.lastUpdatedAt}`;
+
+                    switch (target.instanceTarget.status) {
+                        case "Failed":
+                            treeitem.iconPath = vscode.Uri.file(path.join(__dirname, "../../resources/light/errorTarget.svg"));;
+                            break;
+
+                        case "Succeeded":
+                            treeitem.iconPath = vscode.Uri.file(path.join(__dirname, "../../resources/light/succeededTarget.svg"));;
+                            break;
+
+                        default:
+                            break;
+                    }
+
+                    targets.push(treeitem);
+                }
+
+            });
+
+            return targets;
+        }
+    }
+    async getDeploymentGroupInfoTreeItem(deploymentGroupName: string): Promise<vscode.TreeItem[]> {
+
+        let deploymentGroups = await this.getDeploymentGroup();
+        let properties = [];
+        if (deploymentGroups) {
+
+            let dg = deploymentGroups[0];
+
+            properties.push(TreeItemUtil.addProperty("Deployment Configuration", dg.Data.deploymentConfigName));
+            properties.push(TreeItemUtil.addProperty("Service Role ARN", dg.Data.serviceRoleARN));
+
+            properties.push(TreeItemUtil.addCollapsedItem("AutoScaling Groups", "autoscalinggroups"));
+            properties.push(TreeItemUtil.addCollapsedItem("EC2 tag filters", "ec2TagFilters"));
+        }
+
+        return properties;
+    }
+
+    addTreeItemProp(key: string, value: string): vscode.TreeItem {
+
+        let treeItem = new vscode.TreeItem(`${key}=${value}`, vscode.TreeItemCollapsibleState.None);
+        treeItem.iconPath = vscode.Uri.file(path.join(__dirname, "../../resources/light/constant.svg"));
+
+        return treeItem;
+
+    }
 }

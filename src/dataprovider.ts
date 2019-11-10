@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { CDApplication } from "./models/cdmodels";
-import { CDUtil } from './codedeploy/cdutil';
-import { Dialog } from './shared/ui/dialog';
+import { CDUtil } from './aws/codedeploy/cdutil';
 
 export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
@@ -65,14 +64,16 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                     return this.cdUtil.getDeploymentGroup();
                     break;
 
+                case "deploymentGroup":
+                        return this.cdUtil.getDeploymentGroupInfoTreeItem(element.label);
+                    break;
+
                 case "deployments":
                     return this.cdUtil.getDeployments();
                     break;
 
                 case "deployment":
-                    let targets = new vscode.TreeItem("Targets", vscode.TreeItemCollapsibleState.Collapsed);
-                    targets.iconPath = "Folder";
-                    return [targets];
+                    return this.cdUtil.getDeploymentTargetTreeItems(element.label);
                     break;
 
                 default:
@@ -101,13 +102,10 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                 "contextValue": "deploymentGroups"
             },
             {
-                "label": "Deployment Configurations",
-                "contextValue": "deploymentConfigs"
-            }
-            , {
                 "label": "Deployments",
                 "contextValue": "deployments"
-            }];
+            }
+        ];
 
         labels.forEach(element => {
             var treeItem = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
@@ -158,16 +156,15 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                     break;
 
                 case "deploymentGroup":
-                        uri = uri + `/applications/${this.conf.get("applicationName")}/deployment-groups/${node.label}`;
+                    uri = uri + `/applications/${this.conf.get("applicationName")}/deployment-groups/${node.label}`;
                     break;
-
             }
         }
         else {
             uri = `console.aws.amazon.com/codesuite/codedeploy/start?`;
         }
-        
-        vscode.commands.executeCommand('vscode.open', vscode.Uri.parse("https://"+uri));
+
+        vscode.commands.executeCommand('vscode.open', vscode.Uri.parse("https://" + uri));
     }
 
     configureRevisionLocations(): any {

@@ -25,6 +25,7 @@ export class CDDeploymentGroup extends vscode.TreeItem {
 
     public Deployments: CDDeployment[];
     contextValue = 'deploymentGroup';
+    Data: any;
 
     constructor(
         _label: string = "CodeDeploy Deployment Group",
@@ -39,6 +40,7 @@ export class CDDeploymentGroup extends vscode.TreeItem {
 export class CDDeployment extends vscode.TreeItem {
 
     contextValue = 'deployment';
+    public Data;
 
     constructor(
         _label: string = "CodeDeploy Deployment",

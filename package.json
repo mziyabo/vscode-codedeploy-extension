@@ -66,15 +66,15 @@
       },
       {
         "command": "cdExplorer.deploy",
-        "title": "Deploy"
+        "title": "Deploy Application"
       },
       {
         "command": "cdExplorer.stop",
-        "title": "Stop"
+        "title": "Stop Deployment"
       },
       {
         "command": "cdExplorer.viewDeployment",
-        "title": "Details"
+        "title": "View Deployment Details"
       },
       {
         "command": "cdExplorer.delete",
@@ -117,7 +117,7 @@
       "view/item/context": [
         {
           "command": "cdExplorer.openconsole",
-          "when": "view == cdExplorer && (viewItem == deploymentGroup || viewItem =~ /^application/)",
+          "when": "view == cdExplorer",
           "group": "application@1"
         },
         {
@@ -167,6 +167,10 @@
           "codedeploy.revisionBucket": {
             "type": "string",
             "description": "CodeDeploy Revision Bucket"
+          },
+          "codedeploy.revisionLocalDirectory": {
+            "type": "string",
+            "description": "CodeDeploy Revision Local Directory"
           },
           "codedeploy.linkedToCodedeployApplication": {
             "type": "boolean",
