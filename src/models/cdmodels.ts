@@ -8,7 +8,10 @@ export class CDApplication extends vscode.TreeItem {
     public Data;
 
     contextValue = 'application';
-    iconPath = vscode.Uri.file(path.join(__dirname, "../resources/light/codedeploy.svg"));
+    iconPath = {
+        light: vscode.Uri.file(path.join(__dirname, "..", "..", "/resources/light/codedeploy.svg")),
+        dark: vscode.Uri.file(path.join(__dirname, "..", "..", "/resources/dark/codedeploy.svg")),
+    };
 
     constructor(
         _label: string = "CodeDeploy Application",
@@ -18,7 +21,6 @@ export class CDApplication extends vscode.TreeItem {
         super(_label, _collapsibleState)
         //TODO: initialize
     }
-
 }
 
 export class CDDeploymentGroup extends vscode.TreeItem {

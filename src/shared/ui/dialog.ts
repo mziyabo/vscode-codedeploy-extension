@@ -1,6 +1,3 @@
-import * as vscode from 'vscode';
-import { QuickPickOptions, CancellationToken } from 'vscode';
-import { QuickPickItem } from './quickpickitem';
 
 export class Dialog {
 
@@ -21,7 +18,7 @@ export class Dialog {
     }
 
     async run() {
-        
+
         this.cancelled = false;
         for (let i: number = 0; i < this.prompts.length; i++) {
             let response = await this.prompts[i].fire();

@@ -17,18 +17,21 @@
   ],
   "author": "mziyabo@live.com",
   "license": "Apache 2.0",
+  "preview": true,
   "dependencies": {
     "@types/node": "^12.7.5",
     "@types/vscode": "^1.38.0",
     "adm-zip": "^0.4.13",
     "aws-sdk": "^2.528.0",
-    "vscode": "^1.1.36"
+    "vscode": "^1.1.36",
+    "vscode-nls": "^4.1.1"
   },
   "devDependencies": {
     "typescript": "^3.6.3",
     "mocha-junit-reporter": "^1.23.1",
     "mocha-multi-reporters": "^1.1.7",
-    "mocha": "^6.2.2"
+    "mocha": "^6.2.2",
+    "vscode-nls-dev": "^3.3.1"
   },
   "contributes": {
     "views": {
@@ -50,53 +53,84 @@
       },
       {
         "command": "cdExplorer.openconsole",
-        "title": "Open Console"
+        "title": "%cdExplorer.openConsole.title%"
       },
       {
         "command": "cdExplorer.create",
-        "title": "Create Application"
+        "title": "%cdExplorer.createApplication.title%"
       },
       {
         "command": "cdExplorer.select",
-        "title": "Add Existing Application"
+        "title": "%cdExplorer.selectExisting.title%"
       },
       {
         "command": "cdExplorer.remove",
-        "title": "Delete Application"
+        "title": "%cdExplorer.removeApplication.title%"
       },
       {
         "command": "cdExplorer.deploy",
-        "title": "Deploy Application"
+        "title": "%cdExplorer.deployApplication.title%"
       },
       {
         "command": "cdExplorer.stop",
-        "title": "Stop Deployment"
+        "title": "%cdExplorer.stopDeployment.title%"
       },
       {
         "command": "cdExplorer.viewDeployment",
-        "title": "View Deployment Details"
+        "title": "%cdExplorer.viewDeployment.title%"
       },
       {
         "command": "cdExplorer.delete",
-        "title": "Delete"
+        "title": "%cdExplorer.deleteApplication.title%"
       },
       {
         "command": "cdExplorer.configureRevisionLocations",
-        "title": "Configure Revision Locations"
+        "title": "%cdExplorer.configureRevisionLocation.title%"
       },
       {
         "command": "cdExplorer.addEC2Tag",
-        "title": "Add EC2 Tag Filter",
-        "enablement": "viewItem == ec2TagFilters"
+        "title": "%cdExplorer.addEC2Tag.title%"
       },
       {
         "command": "cdExplorer.addASG",
-        "title": "Add AutoScaling Group",
-        "enablement": "viewItem == autoScalingGroups"
+        "title": "%cdExplorer.addASG.title%"
       }
     ],
     "menus": {
-      "commandPalette": [],
+      "commandPalette": [
+        {
+          "command": "cdExplorer.openconsole",
+          "when": "never"
+        },
+        {
+          "command": "cdExplorer.create",
+          "when": "!config.codedeploy.linkedToCodedeployApplication"
+        },
+        {
+          "command": "cdExplorer.delete",
+          "when": "config.codedeploy.linkedToCodedeployApplication"
+        },
+        {
+          "command": "cdExplorer.configureRevisionLocations",
+          "when": "config.codedeploy.linkedToCodedeployApplication"
+        },
+        {
+          "command": "cdExplorer.deploy",
+          "when": "config.codedeploy.linkedToCodedeployApplication"
+        },
+        {
+          "command": "cdExplorer.viewDeployment",
+          "when": "never"
+        },
+        {
+          "command": "cdExplorer.addEC2Tag",
+          "when": "never"
+        },
+        {
+          "command": "cdExplorer.addASG",
+          "when": "never"
+        }
+      ],
       "view/title": [
         {
           "command": "cdExplorer.refresh",
@@ -173,28 +207,28 @@
         "properties": {
           "codedeploy.region": {
             "type": "string",
-            "description": "AWS Region"
+            "description": "%codedeploy.region.description%"
           },
           "codedeploy.applicationName": {
             "type": "string",
             "description": "Default AWS CodeDeploy application name for workspace",
-            "title": "AWS CodeDeploy Application Name"
+            "title": "%codedeploy.applicationName.title%"
           },
           "codedeploy.deploymentGroupName": {
             "type": "string",
-            "description": "CodeDeploy Deployment Group"
+            "description": "%codedeploy.deploymentGroupName.description%"
           },
           "codedeploy.revisionBucket": {
             "type": "string",
-            "description": "CodeDeploy Revision Bucket"
+            "description": "%codedeploy.revisionBucket.description%"
           },
           "codedeploy.revisionLocalDirectory": {
             "type": "string",
-            "description": "CodeDeploy Revision Local Directory"
+            "description": "%codedeploy.revisionLocalDirectory.description%"
           },
           "codedeploy.linkedToCodedeployApplication": {
             "type": "boolean",
-            "description": "Linked to CodeDeploy Application",
+            "description": "%codedeploy.linkedToCodedeployApplication.description%",
             "readOnly": true
           }
         }

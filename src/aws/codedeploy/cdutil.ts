@@ -8,10 +8,8 @@ import { ConfigurationUtil } from '../../shared/configuration/config';
 import { Dialog } from '../../shared/ui/dialog';
 import { QuickPickItem } from '../../shared/ui/quickpickitem';
 import { TreeItemUtil } from '../../shared/ui/treeItemUtil';
-import { stringify } from 'querystring';
 
 export class CDUtil {
-
 
     public Application: CDApplication;
     public Deployments: CDDeployment[];
@@ -43,7 +41,6 @@ export class CDUtil {
                 region: this.conf.get("region")
             });
         }
-
     }
 
     /**
@@ -110,18 +107,18 @@ export class CDUtil {
      */
     async scaffoldApplication() {
 
-        // TODO: abort(clear configuration settings) if CreateApplication fails
         let createAppResponse = await this.createApplication();
 
-        let createDeploymentGp = await vscode.window.showQuickPick(["Yes", "No"], {
-            placeHolder: "Create Deployment Group?",
-            ignoreFocusOut: true
-        });
+        if (createAppResponse) {
 
-        if (createDeploymentGp == "Yes") {
-            await this.createDeploymentGroup();
-            // TODO: prompt to create deployment targets
+            let createDeploymentGp = await vscode.window.showInformationMessage("Create Deployment Group?", { modal: true }, "Yes", "No");
+
+            if (createDeploymentGp == "Yes") {
+                await this.createDeploymentGroup();
+                // TODO: prompt to add deployment targets ec2TargetFilter/AutoScalingGroup
+            }
         }
+
     }
 
     async createApplication() {
@@ -375,10 +372,17 @@ export class CDUtil {
 
                     // TODO: fix icons issue
                     deployment.description = `- ${deployment.Data.errorInformation.message}`;
-                    deployment.iconPath = vscode.Uri.file(path.join(__dirname, "../../resources/light/error.svg"));
+                    deployment.iconPath = {
+                        light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/error.svg")),
+                        dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/error.svg"))
+                    
+                    };
                 }
                 else {
-                    deployment.iconPath = vscode.Uri.file(path.join(__dirname, "../../resources/light/success.svg"));
+                    deployment.iconPath = {
+                        light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/check.svg")),
+                        dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/check.svg"))
+                    };
                 }
 
                 deploymentDetails.push(deployment);
@@ -489,11 +493,19 @@ export class CDUtil {
 
                     switch (target.instanceTarget.status) {
                         case "Failed":
-                            treeitem.iconPath = vscode.Uri.file(path.join(__dirname, "../../resources/light/errorTarget.svg"));;
+                            treeitem.iconPath = {
+                                light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/errorTarget.svg")),
+                                dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/errorTarget.svg"))
+
+                            };
                             break;
 
                         case "Succeeded":
-                            treeitem.iconPath = vscode.Uri.file(path.join(__dirname, "../../resources/light/succeededTarget.svg"));;
+                            treeitem.iconPath = {
+                                light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/succeededTarget.svg")),
+                                dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/succeededTarget.svg"))
+
+                            };
                             break;
 
                         default:
