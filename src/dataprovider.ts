@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 import { CDApplication } from "./models/cdmodels";
-import { CDUtil } from './aws/codedeploy/cdutil';
+import { CDUtil } from './aws/codedeploy/codedeploy';
 import { TreeItemUtil } from './shared/ui/treeItemUtil';
+import { unlink } from 'fs';
 
 export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
-    private conf = vscode.workspace.getConfiguration("codedeploy");
+    private conf;
 
     private _onDidChangeTreeData: vscode.EventEmitter<CDApplication | undefined> = new vscode.EventEmitter<CDApplication | undefined>();
     readonly onDidChangeTreeData: vscode.Event<CDApplication | undefined> = this._onDidChangeTreeData.event;
@@ -14,6 +15,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
 
     constructor() {
         this.cdUtil = new CDUtil();
+        this.conf = vscode.workspace.getConfiguration("codedeploy");
     }
 
     async getTreeItem(element: CDApplication): Promise<vscode.TreeItem> {
@@ -54,7 +56,6 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         await this.conf.update("linkedToCodedeployApplication", true);
         if (element) {
 
-
             var contextValue = element.contextValue;
             switch (contextValue) {
                 case "application":
@@ -62,7 +63,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                     break;
 
                 case "deploymentGroups":
-                    return this.cdUtil.getDeploymentGroup();
+                    return [await this.cdUtil.getDeploymentGroup(this.conf.get("deploymentGroupName"))];
                     break;
 
                 case "deploymentGroup":
@@ -97,6 +98,9 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         }
     }
 
+    /**
+     * Retrieve TreeItems for Application contextValues
+     */
     applicationTreeItems() {
 
         let treeItems: vscode.TreeItem[] = [];
@@ -123,12 +127,12 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         this._onDidChangeTreeData.fire();
     }
 
-    async select() {
+    async selectApplication() {
         await this.cdUtil.getExistingCodeDeploy();
         this.refresh();
     }
 
-    async create() {
+    async createApplication() {
         await this.cdUtil.scaffoldApplication();
         this.refresh();
     }
@@ -186,7 +190,28 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
 
     async delete(node: vscode.TreeItem) {
 
+        // TODO: prompt/warn user of deletion
         await this.cdUtil.delete(node);
+        this.unlinkWorkspace();
+        
+    }
+
+    unlinkWorkspace(): any {
+
+        this.conf = vscode.workspace.getConfiguration("codedeploy");
+
+        let settings = [
+            "applicationName",
+            "deploymentGroupName",
+            "revisionBucket",
+            "revisionLocalDirectory",
+            "linkedToCodedeployApplication"
+        ];
+
+        settings.forEach(setting => {
+            this.conf.update(setting, undefined);
+        });
+
         this.refresh();
     }
 

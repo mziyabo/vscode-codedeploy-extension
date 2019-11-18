@@ -56,16 +56,20 @@
         "title": "%cdExplorer.openConsole.title%"
       },
       {
-        "command": "cdExplorer.create",
+        "command": "cdExplorer.createApplication",
         "title": "%cdExplorer.createApplication.title%"
       },
       {
-        "command": "cdExplorer.select",
-        "title": "%cdExplorer.selectExisting.title%"
+        "command": "cdExplorer.selectApplication",
+        "title": "%cdExplorer.selectExisting.title%",
+        "icon":{
+          "light": "resources/light/add.svg",
+          "dark": "resources/dark/add.svg"
+        }
       },
       {
-        "command": "cdExplorer.remove",
-        "title": "%cdExplorer.removeApplication.title%"
+        "command": "cdExplorer.unlinkWorkspace",
+        "title": "%cdExplorer.unlinkWorkspace.title%"
       },
       {
         "command": "cdExplorer.deploy",
@@ -80,7 +84,7 @@
         "title": "%cdExplorer.viewDeployment.title%"
       },
       {
-        "command": "cdExplorer.delete",
+        "command": "cdExplorer.deleteApplication",
         "title": "%cdExplorer.deleteApplication.title%"
       },
       {
@@ -103,11 +107,11 @@
           "when": "never"
         },
         {
-          "command": "cdExplorer.create",
+          "command": "cdExplorer.createApplication",
           "when": "!config.codedeploy.linkedToCodedeployApplication"
         },
         {
-          "command": "cdExplorer.delete",
+          "command": "cdExplorer.deleteApplication",
           "when": "config.codedeploy.linkedToCodedeployApplication"
         },
         {
@@ -133,6 +137,12 @@
       ],
       "view/title": [
         {
+          "command": "cdExplorer.selectApplication",
+          "when": "view == cdExplorer",
+          "group": "navigation"
+
+        },
+        {
           "command": "cdExplorer.refresh",
           "when": "view == cdExplorer",
           "group": "navigation"
@@ -143,29 +153,34 @@
           "group": "1_application_view"
         },
         {
-          "command": "cdExplorer.select",
+          "command": "cdExplorer.createApplication",
           "when": "view == cdExplorer && !config.codedeploy.linkedToCodedeployApplication",
           "group": "application_mod"
         },
         {
-          "command": "cdExplorer.create",
+          "command": "cdExplorer.selectApplication",
           "when": "view == cdExplorer && !config.codedeploy.linkedToCodedeployApplication",
+          "group": "application_mod"
+        },
+        {
+          "command": "cdExplorer.unlinkWorkspace",
+          "when": "view == cdExplorer && config.codedeploy.linkedToCodedeployApplication",
           "group": "application_mod"
         },
         {
           "command": "cdExplorer.refresh",
-          "when": "view == cdExplorer",
+          "when": "view == cdExplorer && viewItem =~ /application|deployment/",
           "group": "shared_common"
         }
       ],
       "view/item/context": [
         {
           "command": "cdExplorer.openconsole",
-          "when": "view == cdExplorer",
+          "when": "view == cdExplorer && viewItem =~ /application|deployment/",
           "group": "application@1"
         },
         {
-          "command": "cdExplorer.delete",
+          "command": "cdExplorer.deleteApplication",
           "when": "view == cdExplorer && viewItem == application && config.codedeploy.linkedToCodedeployApplication",
           "group": "application_manage@1"
         },
@@ -229,7 +244,8 @@
           "codedeploy.linkedToCodedeployApplication": {
             "type": "boolean",
             "description": "%codedeploy.linkedToCodedeployApplication.description%",
-            "readOnly": true
+            "readOnly": true,
+            "default": false
           }
         }
       }

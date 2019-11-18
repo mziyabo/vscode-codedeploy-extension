@@ -2,7 +2,7 @@
     "cdExplorer.openConsole.title": "Open in AWS Console",
     "cdExplorer.createApplication.title": "Create Application",
     "cdExplorer.selectExisting.title": "Add Existing Application",
-    "cdExplorer.removeApplication.title": "Remove Application",
+    "cdExplorer.unlinkWorkspace.title": "Remove",
     "cdExplorer.deployApplication.title": "Deploy Application",
     "cdExplorer.stopDeployment.title": "Stop Deployment",
     "cdExplorer.viewDeployment.title": "View Deployment Details",
@@ -10,10 +10,9 @@
     "cdExplorer.configureRevisionLocation.title": "Configure Revision Locations",
     "cdExplorer.addEC2Tag.title": "Add EC2 Tag Filter",
     "cdExplorer.addASG.title": "Add AutoScaling Group",
-
-    "codedeploy.region.description":"AWS Region",
+    "codedeploy.region.description": "AWS Region",
     "codedeploy.applicationName.title": "CodeDeploy Application Name",
-    "codedeploy.deploymentGroupName.description":"CodeDeploy Deployment Group",
+    "codedeploy.deploymentGroupName.description": "CodeDeploy Deployment Group",
     "codedeploy.revisionBucket.description": "CodeDeploy Revision Bucket",
     "codedeploy.revisionLocalDirectory.description": "CodeDeploy Revision Local Directory",
     "codedeploy.linkedToCodedeployApplication.description": "Linked to CodeDeploy Application"

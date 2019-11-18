@@ -2,7 +2,7 @@ let AWS = require("aws-sdk");
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { CDApplication, CDDeploymentGroup, CDDeployment } from "../../models/cdmodels";
-import { S3Util } from "../s3/s3Util";
+import { S3Util } from "../s3/s3";
 import { AWSRegions } from '../../models/region';
 import { ConfigurationUtil } from '../../shared/configuration/config';
 import { Dialog } from '../../shared/ui/dialog';
@@ -111,7 +111,7 @@ export class CDUtil {
 
         if (createAppResponse) {
 
-            let createDeploymentGp = await vscode.window.showInformationMessage("Create Deployment Group?", { modal: true }, "Yes", "No");
+            let createDeploymentGp = await vscode.window.showInformationMessage("Create Deployment Group?", "Yes", "No");
 
             if (createDeploymentGp == "Yes") {
                 await this.createDeploymentGroup();
@@ -129,7 +129,7 @@ export class CDUtil {
             return await vscode.window.showQuickPick(AWSRegions.toQuickPickItemArray(), {
                 canPickMany: false,
                 placeHolder: "Select AWS CodeDeploy Region",
-                ignoreFocusOut: true
+                ignoreFocusOut: true,
             });
         });
 
@@ -182,6 +182,9 @@ export class CDUtil {
             ignoreFocusOut: true
         });
 
+        if (!serviceRoleARN)
+            return;
+
         // CreateDeploymentGroup
         var params = {
             applicationName: this._applicationName,
@@ -191,7 +194,7 @@ export class CDUtil {
                 {
                     Key: 'deployment_group',
                     Type: 'KEY_AND_VALUE',
-                    Value: `${this._deploymentGroupName}`
+                    Value: this._deploymentGroupName
                 },
             ],
         }
@@ -300,7 +303,11 @@ export class CDUtil {
     /**
      * Get Deployment Group
      */
-    async getDeploymentGroup(): Promise<CDDeploymentGroup[]> {
+    async getDeploymentGroup(deploymentGroupName: string): Promise<CDDeploymentGroup> {
+
+        if (!deploymentGroupName) {
+            return;
+        }
 
         this.initClient();
 
@@ -309,7 +316,7 @@ export class CDUtil {
         // Get Deployment Group
         var deploygroupparams = {
             applicationName: this.conf.get("applicationName"),
-            deploymentGroupName: this.conf.get("deploymentGroupName")
+            deploymentGroupName: deploymentGroupName
         };
 
         var response = await this.codedeploy.getDeploymentGroup(deploygroupparams).promise();
@@ -320,13 +327,17 @@ export class CDUtil {
             deploymentGroups = [this.DeploymentGroup];
         }
 
-        return deploymentGroups;
+        return this.DeploymentGroup;
     }
 
     /**
      * Retrieve CodeDeploy Deployments
      */
     async getDeployments(): Promise<CDDeployment[]> {
+
+        //TODO: prompt to add DeploymentGroup    
+        if (!this.conf.get("deploymentGroupName"))
+            return;
 
         this.initClient();
 
@@ -335,6 +346,7 @@ export class CDUtil {
         // Get Deployments
         var deploymentsparams = {
             applicationName: this.conf.get("applicationName"),
+            // TODO: review removing this to move to showing multiple deployments
             deploymentGroupName: this.conf.get("deploymentGroupName"),
             includeOnlyStatuses: [
                 "Created",
@@ -375,7 +387,7 @@ export class CDUtil {
                     deployment.iconPath = {
                         light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/error.svg")),
                         dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/error.svg"))
-                    
+
                     };
                 }
                 else {
@@ -456,9 +468,15 @@ export class CDUtil {
 
     }
 
-    delete(node: vscode.TreeItem) {
-        // TODO:
-        throw new Error("Method not implemented.");
+    async delete(node: vscode.TreeItem) {
+
+        this.initClient();
+
+        let params = {
+            applicationName: node.label
+        };
+
+        let response = await this.codedeploy.deleteApplication(params).promise();
     }
 
     async getDeploymentTargetTreeItems(deploymentId: string): Promise<vscode.TreeItem[]> {
@@ -521,11 +539,10 @@ export class CDUtil {
 
     async getDeploymentGroupInfoTreeItem(deploymentGroupName: string): Promise<vscode.TreeItem[]> {
 
-        let deploymentGroups = await this.getDeploymentGroup();
-        let properties = [];
-        if (deploymentGroups) {
+        let dg = await this.getDeploymentGroup(deploymentGroupName);
 
-            let dg = deploymentGroups[0];
+        let properties = [];
+        if (dg) {
 
             properties.push(TreeItemUtil.addProperty("Deployment Configuration", dg.Data.deploymentConfigName));
             properties.push(TreeItemUtil.addProperty("Service Role ARN", dg.Data.serviceRoleArn));
@@ -553,7 +570,7 @@ export class CDUtil {
 
             this.initClient();
 
-            let dg: CDDeploymentGroup[] = await this.getDeploymentGroup();
+            let dg: CDDeploymentGroup = await this.getDeploymentGroup(this.conf.get("deploymentGroupName"));
             let existingFilters = dg[0].Data.ec2TagFilters ? dg[0].Data.ec2TagFilters : [];
 
             let tag = {
@@ -577,11 +594,11 @@ export class CDUtil {
 
     async listEC2TagFilters() {
 
-        let dg = await this.getDeploymentGroup();
+        let dg = await this.getDeploymentGroup(this.conf.get("deploymentGroupName"));
 
         let tagFilters: vscode.TreeItem[] = [];
         // TODO: Check if ec2TagSet/ec2TagFilters is undefined
-        dg[0].Data.ec2TagFilters.forEach(filter => {
+        dg.Data.ec2TagFilters.forEach(filter => {
             tagFilters.push(TreeItemUtil.addProperty(filter.Key, filter.Value, undefined, false))
         });
 
@@ -606,7 +623,7 @@ export class CDUtil {
 
             this.initClient();
 
-            let dg: CDDeploymentGroup = await this.getDeploymentGroup()[0];
+            let dg: CDDeploymentGroup = await this.getDeploymentGroup(this.conf.get("deploymentGroupName"));
             let existingASGs: string[] = dg.Data.autoScalingGroups;
 
             existingASGs.push(dialog.getResponse("asgName"));
