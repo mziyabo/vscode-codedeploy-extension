@@ -8,11 +8,12 @@ export class TreeItemUtil {
         let treeItem = new vscode.TreeItem(`${key}=${value}`, vscode.TreeItemCollapsibleState.None);
 
         treeItem.contextValue = contextValue;
-        if (includeIcon) treeItem.iconPath = {
-            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/constant.svg")),
-            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/constant.svg"))
-        };
-
+        if (includeIcon) {
+            treeItem.iconPath = {
+                light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/constant.svg")),
+                dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/constant.svg"))
+            };
+        }
         return treeItem;
     }
 
@@ -22,7 +23,7 @@ export class TreeItemUtil {
 
         treeItem.contextValue = contextValue;
         treeItem.iconPath = iconfsPath;
-
+        
         return treeItem;
     }
 

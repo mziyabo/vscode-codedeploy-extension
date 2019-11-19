@@ -98,6 +98,14 @@
       {
         "command": "cdExplorer.addASG",
         "title": "%cdExplorer.addASG.title%"
+      },
+      {
+        "command": "cdExplorer.createDeploymentGroup",
+        "title": "%cdExplorer.addDeploymentGroup.title%"
+      },
+      {
+        "command": "cdExplorer.deleteDeploymentGroup",
+        "title": "%cdExplorer.deleteDeploymentGroup.title%"
       }
     ],
     "menus": {
@@ -169,7 +177,7 @@
         },
         {
           "command": "cdExplorer.refresh",
-          "when": "view == cdExplorer && viewItem =~ /application|deployment/",
+          "when": "view == cdExplorer",
           "group": "shared_common"
         }
       ],
@@ -201,7 +209,7 @@
         },
         {
           "command": "cdExplorer.refresh",
-          "when": "view == cdExplorer",
+          "when": "view == cdExplorer && viewItem =~ /application|deployment/",
           "group": "z_extension"
         },
         {

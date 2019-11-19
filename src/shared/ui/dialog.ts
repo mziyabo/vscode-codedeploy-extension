@@ -39,6 +39,7 @@ export class Dialog {
 
         let p = this.responses.find((prompt) => { return prompt.name == name });
         if (p.response.hasOwnProperty("label")) {
+            // TODO: allow the entire QuickPickItem e.g. for ServiceRolesArns
             return p.response.label;
         }
 

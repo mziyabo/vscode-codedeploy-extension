@@ -8,8 +8,8 @@ export class QuickPickItem implements vscode.QuickPickItem {
     picked?: boolean;
     alwaysShow?: boolean;
 
-    constructor(label: string, detail: string) {
+    constructor(label: string, description: string) {
         this.label = label;
-        this.description = detail;
+        this.description = description;
     }
 }

@@ -63,6 +63,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                     break;
 
                 case "deploymentGroups":
+                    // TODO: replace with list DeploymentGroups- transition from 1:1 mapping with Workspace
                     return [await this.cdUtil.getDeploymentGroup(this.conf.get("deploymentGroupName"))];
                     break;
 
@@ -90,7 +91,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
             return vscode.window.withProgress({
                 cancellable: false,
                 location: vscode.ProgressLocation.Window,
-                title: "Fetching CodeDeploy application"
+                title: "Fetching CodeDeploy Application"
             },
                 async (progress, token) => {
                     return [await this.cdUtil.getApplication()]
@@ -109,10 +110,6 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
             {
                 "label": "Deployment Groups",
                 "contextValue": "deploymentGroups"
-            },
-            {
-                "label": "Deployments",
-                "contextValue": "deployments"
             }
         ];
 

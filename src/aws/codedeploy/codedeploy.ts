@@ -8,6 +8,8 @@ import { ConfigurationUtil } from '../../shared/configuration/config';
 import { Dialog } from '../../shared/ui/dialog';
 import { QuickPickItem } from '../../shared/ui/quickpickitem';
 import { TreeItemUtil } from '../../shared/ui/treeItemUtil';
+import { IAMUtil } from '../iam/iam';
+import { get } from 'http';
 
 export class CDUtil {
 
@@ -118,7 +120,6 @@ export class CDUtil {
                 // TODO: prompt to add deployment targets ec2TargetFilter/AutoScalingGroup
             }
         }
-
     }
 
     async createApplication() {
@@ -156,8 +157,8 @@ export class CDUtil {
             return vscode.window.withProgress(
                 {
                     cancellable: false,
-                    title: "Creating CodeDeploy Application",
-                    location: vscode.ProgressLocation.Notification
+                    title: `Creating CodeDeploy Application: \'${this._applicationName}\'`,
+                    location: vscode.ProgressLocation.Window
                 }, async (progress, token) => {
 
                     let response = await this.codedeploy.createApplication(applicationParams).promise();
@@ -177,40 +178,47 @@ export class CDUtil {
 
         this.initClient();
 
-        let serviceRoleARN: string = await vscode.window.showInputBox({
-            prompt: "Enter CodeDeploy Service Role ARN:",
-            ignoreFocusOut: true
+        let iamUtil = new IAMUtil();
+
+        let dialog: Dialog = new Dialog();
+
+        dialog.addPrompt("_deploymentGroupName", async () => {
+            return await vscode.window.showInputBox({
+                prompt: "Enter Deployment Group Name:",
+                ignoreFocusOut: true
+            });
         });
 
-        if (!serviceRoleARN)
-            return;
-
-        // CreateDeploymentGroup
-        var params = {
-            applicationName: this._applicationName,
-            deploymentGroupName: `${this._deploymentGroupName}`,
-            serviceRoleArn: serviceRoleARN,
-            ec2TagFilters: [
-                {
-                    Key: 'deployment_group',
-                    Type: 'KEY_AND_VALUE',
-                    Value: this._deploymentGroupName
-                },
-            ],
-        }
-
-        return vscode.window.withProgress(
-            {
-                cancellable: false,
-                title: "Creating Deployment Group",
-                location: vscode.ProgressLocation.Notification
-            }, async (progress, token) => {
-                let response = await this.codedeploy.createDeploymentGroup(params).promise();
-                return response;
+        dialog.addPrompt("_serviceRoleArn", async () => {
+            return await vscode.window.showQuickPick(iamUtil.getRolesAsQuickPickItems(), {
+                canPickMany: false,
+                placeHolder: "Select CodeDeploy Service Role:",
+                ignoreFocusOut: true,
             });
+        });
 
+        await dialog.run();
+
+        if (!dialog.cancelled) {
+
+            // CreateDeploymentGroup
+            var params = {
+                applicationName: this._applicationName,
+                deploymentGroupName: dialog.getResponse("_deploymentGroupName"),
+                serviceRoleArn: dialog.getResponse("_serviceRoleArn")
+            }
+
+            return vscode.window.withProgress(
+                {
+                    cancellable: false,
+                    title: `Creating Deployment Group: \'${dialog.getResponse("_deploymentGroupName")}\'`,
+                    location: vscode.ProgressLocation.Window
+                }, async (progress, token) => {
+                    let response = await this.codedeploy.createDeploymentGroup(params).promise();
+                    return response;
+                });
+        }
     }
-
 
     /**
      * Set revision bucket and local directory to use
@@ -218,7 +226,6 @@ export class CDUtil {
     async configureRevisionLocations() {
 
         let dialog: Dialog = new Dialog();
-        let bucket: string = this.conf.get("s3LocationBucket");
 
         let s3: S3Util = new S3Util();
         let buckets: QuickPickItem[] = await s3.getS3BucketsAsQuickItem();
@@ -529,6 +536,7 @@ export class CDUtil {
                         default:
                             break;
                     }
+
                     targets.push(treeitem);
                 }
             });
@@ -544,11 +552,16 @@ export class CDUtil {
         let properties = [];
         if (dg) {
 
-            properties.push(TreeItemUtil.addProperty("Deployment Configuration", dg.Data.deploymentConfigName));
-            properties.push(TreeItemUtil.addProperty("Service Role ARN", dg.Data.serviceRoleArn));
+            properties.push(TreeItemUtil.addProperty("SERVICE_ROLE_ARN", dg.Data.serviceRoleArn));
+            properties.push(TreeItemUtil.addProperty("DEPLOYMENT_CONFIGURATION", dg.Data.deploymentConfigName));
 
             properties.push(TreeItemUtil.addCollapsedItem("AutoScaling Groups", "autoScalingGroups"));
             properties.push(TreeItemUtil.addCollapsedItem("EC2 tag filters", "ec2TagFilters"));
+
+            // TODO: check if we can't get the parent label, i.e. DeploymentGroupName so that we don't use id
+            let deploymentsTreeItem: vscode.TreeItem = TreeItemUtil.addCollapsedItem("Deployments", "deployments");
+
+            properties.push(deploymentsTreeItem);
         }
 
         return properties;
@@ -637,5 +650,15 @@ export class CDUtil {
             await this.codedeploy.updateDeploymentGroup(params).promise();
             console.log(`ASG added to Deployment Group`);
         }
+    }
+
+    async getApplicationsAsQuickPick() {
+        // TODO:
+        throw "NotImplemented";
+    }
+
+    async getDeploymentGroupsAsQuickPicks() {
+        // TODO:
+        throw "NotImplemented";
     }
 }
