@@ -10,6 +10,7 @@ import { QuickPickItem } from '../../shared/ui/quickpickitem';
 import { TreeItemUtil } from '../../shared/ui/treeItemUtil';
 import { IAMUtil } from '../iam/iam';
 import { get } from 'http';
+import { exists } from 'fs';
 
 export class CDUtil {
     listAutoScalingGroups(arg0: string): vscode.TreeItem[] | PromiseLike<vscode.TreeItem[]> {
@@ -254,8 +255,8 @@ export class CDUtil {
 
         if (!dialog.cancelled) {
 
-            this.conf.update("revisionBucket", dialog.getResponse("bucket"));
-            this.conf.update("revisionLocalDirectory", dialog.getResponse("localDir").uri.fsPath);
+            await this.conf.update("revisionBucket", dialog.getResponse("bucket"));
+            await this.conf.update("revisionLocalDirectory", dialog.getResponse("localDir").uri.fsPath);
         }
 
         return dialog.cancelled;
@@ -265,7 +266,7 @@ export class CDUtil {
     /**
      * Deploy CodeDeploy Application
      */
-    async deploy() {
+    async deploy(deploymentGroupName: string) {
 
         let revisionName = await vscode.window.showInputBox({ prompt: "Enter Revision Name:", ignoreFocusOut: true });
         if (!revisionName) return;
@@ -285,7 +286,7 @@ export class CDUtil {
             // Create Deployment
             var params = {
                 applicationName: this.conf.get("applicationName"), /* required */
-                deploymentGroupName: this.conf.get("deploymentGroupName"),
+                deploymentGroupName: deploymentGroupName,
                 revision: {
                     s3Location: {
                         bucket: this.conf.get("revisionBucket"),
@@ -305,7 +306,14 @@ export class CDUtil {
                 , async (progress, token) => {
 
                     let response = await this.codedeploy.createDeployment(params).promise();
-                    console.log(`Deployment Started ${response}`)
+                    console.log(`Deployment Started ${response.deploymentId}`);
+
+                    let openResponse = await vscode.window.showInformationMessage(`Open Deployment ${response.deploymentId} in AWS Console to track progress?`, "Yes", "No");
+                    
+                    if(openResponse=="Yes"){
+                        let uri = `${this.conf.get("region")}.console.aws.amazon.com/codesuite/codedeploy/deployments/${response.deploymentId}`
+                        vscode.commands.executeCommand('vscode.open', vscode.Uri.parse("https://" + uri));
+                    }
                 });
         }
 
@@ -356,9 +364,9 @@ export class CDUtil {
         let deploymentDetails: CDDeployment[] = [];
 
         // Get Deployments
-        var deploymentsparams = {
+        // TODO: review removing this to move to showing multiple deployments
+        var deploymentsParams = {
             applicationName: this.conf.get("applicationName"),
-            // TODO: review removing this to move to showing multiple deployments
             deploymentGroupName: deploymentGroupName,
             includeOnlyStatuses: [
                 "Created",
@@ -373,30 +381,29 @@ export class CDUtil {
 
         await vscode.window.withProgress({
             cancellable: false,
-            title: "Fetching CodeDeploy Deployments",
+            title: `Fetching CodeDeploy Deployments`,
             location: vscode.ProgressLocation.Window
         }, async (progress, token) => {
 
-            var response = await this.codedeploy.listDeployments(deploymentsparams).promise();
+            var response = await this.codedeploy.listDeployments(deploymentsParams).promise();
 
-            let deploymentIds: string[] = [];
-
-            await response.deployments.forEach(deploymentId => {
-                deploymentIds.push(deploymentId);
-            });
-
+            
+            let deploymentIds: string[] = await response.deployments;
             let limit = deploymentIds.length > 10 ? 10 : deploymentIds.length;
 
             if (deploymentIds.length > 0) {
                 let _deployments = await this.batchGetDeployments(deploymentIds.slice(0, limit));
-                _deployments.forEach(deployment => {
+
+                for (let index = 0; index < _deployments.length; index++) {
+                    const deployment = _deployments[index];
 
                     deployment.tooltip = `${deployment.Data.status} - ${deployment.Data.completeTime}`;
 
                     if (deployment.Data.status == "Failed") {
 
-                        // TODO: fix icons issue
+                        deployment.tooltip += `- ${deployment.Data.errorInformation.message}`;
                         deployment.description = `- ${deployment.Data.errorInformation.message}`;
+
                         deployment.iconPath = {
                             light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/error.svg")),
                             dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/error.svg"))
@@ -411,9 +418,11 @@ export class CDUtil {
                     }
 
                     deploymentDetails.push(deployment);
-                });
+
+                }
+
             }
-        })
+        });
 
         return deploymentDetails;
     }
@@ -433,14 +442,15 @@ export class CDUtil {
 
         let response = await this.codedeploy.batchGetDeployments(params).promise();
 
-        response.deploymentsInfo.forEach(deployment => {
+        for (let index = 0; index < response.deploymentsInfo.length; index++) {
+            const deployment = response.deploymentsInfo[index];
             let d: CDDeployment = new CDDeployment(deployment.deploymentId);
             d.Data = deployment;
 
             deployments.push(d);
-        });
+        }
 
-        return deployments;
+        return deployments.sort((a,b)=>{ return b.Data.createTime-a.Data.createTime});
     }
 
     /**
@@ -520,7 +530,8 @@ export class CDUtil {
                 // Create Target TreeItems
                 if (target.deploymentTargetType == "InstanceTarget") {
 
-                    let treeitem = TreeItemUtil.addCollapsedItem(target.instanceTarget.targetId, "instancetarget");
+                    let treeitem = TreeItemUtil.addCollapsedItem(target.instanceTarget.targetId, "instanceTarget");
+                    treeitem.collapsibleState = vscode.TreeItemCollapsibleState.None;
                     treeitem.tooltip = `${target.instanceTarget.status} - ${target.instanceTarget.lastUpdatedAt}`;
 
                     switch (target.instanceTarget.status) {
@@ -528,15 +539,22 @@ export class CDUtil {
                             treeitem.iconPath = {
                                 light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/errorTarget.svg")),
                                 dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/errorTarget.svg"))
-
                             };
+
+                            for (let index = 0; index < target.instanceTarget.lifecycleEvents.length; index++) {
+                                const _event = target.instanceTarget.lifecycleEvents[index];
+
+                                if (_event.status == "Failed") {
+                                    treeitem.tooltip = `${_event.lifecycleEventName} ${_event.status} - ${_event.diagnostics.errorCode}: ${_event.diagnostics.message}`;
+                                    break;
+                                }
+                            }
                             break;
 
                         case "Succeeded":
                             treeitem.iconPath = {
                                 light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/succeededTarget.svg")),
                                 dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/succeededTarget.svg"))
-
                             };
                             break;
 
@@ -559,17 +577,16 @@ export class CDUtil {
         let properties = [];
         if (dg) {
 
-            //properties.push(TreeItemUtil.addProperty(" SERVICE_ROLE_ARN", dg.Data.serviceRoleArn, "", true));
-            //properties.push(TreeItemUtil.addProperty(" DEPLOYMENT_CONFIGURATION", dg.Data.deploymentConfigName, "", true));
-
-            let asgsItem = TreeItemUtil.addCollapsedItem("Auto Scaling Groups", "autoScalingGroups");
-            asgsItem.id = `asg_groupid_${deploymentGroupName}`;
-            properties.push(asgsItem);
-
+            //properties.push(TreeItemUtil.addProperty("SERVICE_ROLE_ARN", dg.Data.serviceRoleArn, "", true));
+            //properties.push(TreeItemUtil.addProperty("DEPLOYMENT_CONFIGURATION", dg.Data.deploymentConfigName, "", true));
 
             let tagFiltersItem = TreeItemUtil.addCollapsedItem("EC2 Tag Filters", "ec2TagFilters");
             tagFiltersItem.id = `filter_groupid_${deploymentGroupName}`;
             properties.push(tagFiltersItem);
+
+            let asgsItem = TreeItemUtil.addCollapsedItem("Auto Scaling Groups", "autoScalingGroups");
+            asgsItem.id = `asg_groupid_${deploymentGroupName}`;
+            properties.push(asgsItem);
 
             // TODO: check if we can't get the parent label, i.e. DeploymentGroupName so that we don't use id
             let deploymentsTreeItem: vscode.TreeItem = TreeItemUtil.addCollapsedItem("Deployments", "deployments");
@@ -657,6 +674,23 @@ export class CDUtil {
                 tagFilters.push(treeItem);
             });
         }
+        else if (dg.Data.ec2TagSet) {
+
+            dg.Data.ec2TagSet.ec2TagSetList.forEach(ec2TagList => {
+
+                ec2TagList.forEach(ec2Tag => {
+
+                    let treeItem = new vscode.TreeItem(`${ec2Tag.Key}=${ec2Tag.Value}`, vscode.TreeItemCollapsibleState.None);
+                    treeItem.iconPath = {
+                        light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/tag.svg")),
+                        dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/tag.svg")),
+                    }
+
+                    tagFilters.push(treeItem);
+
+                });
+            });
+        }
 
         return tagFilters;
     }
@@ -669,7 +703,7 @@ export class CDUtil {
         let dialog: Dialog = new Dialog();
 
         dialog.addPrompt("asgName", async () => {
-            //TODO: user QuickPickItem for ASGs
+            // TODO: user QuickPickItem for AutoScalingGroup
             await vscode.window.showInputBox({ prompt: "Enter AutoScaling Group Name:", ignoreFocusOut: true })
         });
 
@@ -708,10 +742,8 @@ export class CDUtil {
                 let batchResponse = await this.codedeploy.batchGetApplications({ applicationNames: listResponse.applications }).promise();
 
                 batchResponse.applicationsInfo.forEach(appInfo => {
-
                     // Limited to CodeDeploy EC2
                     if (appInfo.computePlatform == "Server") {
-
                         let item: QuickPickItem = new QuickPickItem(appInfo.applicationName, "");
                         quickPickItems.push(item);
                     }
@@ -721,5 +753,4 @@ export class CDUtil {
 
         return quickPickItems;
     }
-
 }

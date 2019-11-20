@@ -63,8 +63,6 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                     break;
 
                 case "deploymentGroups":
-                    // TODO: replace with list DeploymentGroups- transition from 1:1 mapping with Workspace
-                    // return [await this.cdUtil.getDeploymentGroup(this.conf.get("deploymentGroupName"))];
                     return await this.cdUtil.getDeploymentGroupsTreeItems();
                     break;
 
@@ -121,7 +119,6 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
 
         labels.forEach(element => {
             let treeItem = TreeItemUtil.addCollapsedItem(element.label, element.contextValue);
-            treeItem.collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
             treeItems.push(treeItem);
         });
 
@@ -142,8 +139,8 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         this.refresh();
     }
 
-    async deploy() {
-        this.cdUtil.deploy();
+    async deploy(node: vscode.TreeItem) {
+        this.cdUtil.deploy(node.label);
         this.refresh();
     }
 

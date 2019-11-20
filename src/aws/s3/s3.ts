@@ -27,7 +27,7 @@ export class S3Util {
         let response = await s3.putObject(params).promise();
 
         console.log(`Uploaded CodeDeploy Revision: ${response.ETag}`);
-        return revisionName;
+        return response.ETag;
 
     }
 

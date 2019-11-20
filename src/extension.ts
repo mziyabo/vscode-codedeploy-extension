@@ -10,7 +10,7 @@ export async function activate(context: vscode.ExtensionContext) {
     dataProvider = new CodeDeployTreeDataProvider();
     vscode.window.registerTreeDataProvider('cdExplorer', dataProvider);
 
-    vscode.commands.registerCommand('cdExplorer.deploy', () => dataProvider.deploy());
+    vscode.commands.registerCommand('cdExplorer.deploy', node => dataProvider.deploy(node));
     vscode.commands.registerCommand('cdExplorer.refresh', () => dataProvider.refresh());
     vscode.commands.registerCommand('cdExplorer.selectApplication', () => dataProvider.selectApplication());
     vscode.commands.registerCommand('cdExplorer.createApplication', () => dataProvider.createApplication());

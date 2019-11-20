@@ -73,7 +73,11 @@
       },
       {
         "command": "cdExplorer.deploy",
-        "title": "%cdExplorer.deployApplication.title%"
+        "title": "%cdExplorer.deployApplication.title%",
+        "icon" :{
+          "light":"resources/light/deploy.svg",
+          "dark": "resource/dark/deploy.svg"
+        }
       },
       {
         "command": "cdExplorer.stop",
@@ -195,7 +199,7 @@
       "view/item/context": [
         {
           "command": "cdExplorer.openconsole",
-          "when": "view == cdExplorer && viewItem =~ /application|deployment/",
+          "when": "view == cdExplorer && viewItem =~ /application|deployment|autoScalingGroups/",
           "group": "application@1"
         },
         {
@@ -227,11 +231,6 @@
           "command": "cdExplorer.addEC2Tag",
           "when": "viewItem == ec2TagFilters",
           "group": "ec2TagManage@1"
-        },
-        {
-          "command": "cdExplorer.addASG",
-          "when": "viewItem == autoScalingGroups",
-          "group": "asgManage@1"
         }
       ]
     },
