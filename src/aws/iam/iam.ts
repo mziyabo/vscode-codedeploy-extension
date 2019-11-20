@@ -35,7 +35,6 @@ export class IAMUtil {
             listRoleResponse.Roles.forEach(role => {
 
                 let item = new QuickPickItem(role.Arn, role.Description)
-                item.description = role.Description;
                 roles.push(item);
             });
         }

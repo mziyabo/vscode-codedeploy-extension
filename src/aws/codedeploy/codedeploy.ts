@@ -12,6 +12,9 @@ import { IAMUtil } from '../iam/iam';
 import { get } from 'http';
 
 export class CDUtil {
+    listAutoScalingGroups(arg0: string): vscode.TreeItem[] | PromiseLike<vscode.TreeItem[]> {
+        throw new Error("Method not implemented.");
+    }
 
     public Application: CDApplication;
     public Deployments: CDDeployment[];
@@ -62,7 +65,7 @@ export class CDUtil {
 
         if (response.application) {
 
-            let application = new CDApplication(response.application.applicationName, vscode.TreeItemCollapsibleState.Collapsed);
+            let application = new CDApplication(response.application.applicationName, vscode.TreeItemCollapsibleState.Expanded);
             application.Data = response;
             this.Application = application;
             return application;
@@ -85,8 +88,13 @@ export class CDUtil {
             });
         });
 
-        dialog.addPrompt("_applicationName", async () => { return await vscode.window.showInputBox({ prompt: "Enter Application Name" }) })
-        dialog.addPrompt("_deploymentGroupName", async () => { return await vscode.window.showInputBox({ prompt: "Enter DeploymentGroup Name" }) })
+        dialog.addPrompt("_applicationName", async () => {
+            return await vscode.window.showQuickPick(this.getApplicationsAsQuickPickItems(), {
+                canPickMany: false,
+                placeHolder: "Select AWS CodeDeploy Application",
+                ignoreFocusOut: true
+            });
+        })
 
         await dialog.run();
 
@@ -94,13 +102,10 @@ export class CDUtil {
             // Do Work 
             this._region = dialog.getResponse("_region");
             this._applicationName = dialog.getResponse("_applicationName");
-            this._deploymentGroupName = dialog.getResponse("_deploymentGroupName");
 
             // Update Configuration
             await this.conf.update("region", this._region);
             await this.conf.update("applicationName", this._applicationName);
-            await this.conf.update("deploymentGroupName", this._deploymentGroupName);
-
         }
     }
 
@@ -340,10 +345,10 @@ export class CDUtil {
     /**
      * Retrieve CodeDeploy Deployments
      */
-    async getDeployments(): Promise<CDDeployment[]> {
+    async getDeployments(deploymentGroupName: string): Promise<CDDeployment[]> {
 
         //TODO: prompt to add DeploymentGroup    
-        if (!this.conf.get("deploymentGroupName"))
+        if (!deploymentGroupName)
             return;
 
         this.initClient();
@@ -354,7 +359,7 @@ export class CDUtil {
         var deploymentsparams = {
             applicationName: this.conf.get("applicationName"),
             // TODO: review removing this to move to showing multiple deployments
-            deploymentGroupName: this.conf.get("deploymentGroupName"),
+            deploymentGroupName: deploymentGroupName,
             includeOnlyStatuses: [
                 "Created",
                 "Queued",
@@ -382,30 +387,32 @@ export class CDUtil {
 
             let limit = deploymentIds.length > 10 ? 10 : deploymentIds.length;
 
-            let _deployments = await this.batchGetDeployments(deploymentIds.slice(0, limit));
-            _deployments.forEach(deployment => {
+            if (deploymentIds.length > 0) {
+                let _deployments = await this.batchGetDeployments(deploymentIds.slice(0, limit));
+                _deployments.forEach(deployment => {
 
-                deployment.tooltip = `${deployment.Data.status} - ${deployment.Data.completeTime}`;
+                    deployment.tooltip = `${deployment.Data.status} - ${deployment.Data.completeTime}`;
 
-                if (deployment.Data.status == "Failed") {
+                    if (deployment.Data.status == "Failed") {
 
-                    // TODO: fix icons issue
-                    deployment.description = `- ${deployment.Data.errorInformation.message}`;
-                    deployment.iconPath = {
-                        light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/error.svg")),
-                        dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/error.svg"))
+                        // TODO: fix icons issue
+                        deployment.description = `- ${deployment.Data.errorInformation.message}`;
+                        deployment.iconPath = {
+                            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/error.svg")),
+                            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/error.svg"))
 
-                    };
-                }
-                else {
-                    deployment.iconPath = {
-                        light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/check.svg")),
-                        dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/check.svg"))
-                    };
-                }
+                        };
+                    }
+                    else {
+                        deployment.iconPath = {
+                            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/check.svg")),
+                            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/check.svg"))
+                        };
+                    }
 
-                deploymentDetails.push(deployment);
-            });
+                    deploymentDetails.push(deployment);
+                });
+            }
         })
 
         return deploymentDetails;
@@ -552,19 +559,48 @@ export class CDUtil {
         let properties = [];
         if (dg) {
 
-            properties.push(TreeItemUtil.addProperty("SERVICE_ROLE_ARN", dg.Data.serviceRoleArn));
-            properties.push(TreeItemUtil.addProperty("DEPLOYMENT_CONFIGURATION", dg.Data.deploymentConfigName));
+            //properties.push(TreeItemUtil.addProperty(" SERVICE_ROLE_ARN", dg.Data.serviceRoleArn, "", true));
+            //properties.push(TreeItemUtil.addProperty(" DEPLOYMENT_CONFIGURATION", dg.Data.deploymentConfigName, "", true));
 
-            properties.push(TreeItemUtil.addCollapsedItem("AutoScaling Groups", "autoScalingGroups"));
-            properties.push(TreeItemUtil.addCollapsedItem("EC2 tag filters", "ec2TagFilters"));
+            let asgsItem = TreeItemUtil.addCollapsedItem("Auto Scaling Groups", "autoScalingGroups");
+            asgsItem.id = `asg_groupid_${deploymentGroupName}`;
+            properties.push(asgsItem);
+
+
+            let tagFiltersItem = TreeItemUtil.addCollapsedItem("EC2 Tag Filters", "ec2TagFilters");
+            tagFiltersItem.id = `filter_groupid_${deploymentGroupName}`;
+            properties.push(tagFiltersItem);
 
             // TODO: check if we can't get the parent label, i.e. DeploymentGroupName so that we don't use id
             let deploymentsTreeItem: vscode.TreeItem = TreeItemUtil.addCollapsedItem("Deployments", "deployments");
+            deploymentsTreeItem.id = `deployments_groupid_${deploymentGroupName}`;
 
             properties.push(deploymentsTreeItem);
         }
 
         return properties;
+    }
+
+
+    async getDeploymentGroupsTreeItems(): Promise<vscode.TreeItem[]> {
+
+        this.initClient();
+
+        let params = {
+            applicationName: this.conf.get("applicationName")
+        }
+
+        let response = await this.codedeploy.listDeploymentGroups(params).promise();
+        let deploymentGroups: vscode.TreeItem[] = [];
+
+        response.deploymentGroups.forEach(deploymentGroup => {
+            let treeItem: vscode.TreeItem = new vscode.TreeItem(deploymentGroup, vscode.TreeItemCollapsibleState.Collapsed);
+            treeItem.contextValue = "deploymentGroup";
+
+            deploymentGroups.push(treeItem);
+        });
+
+        return deploymentGroups;
     }
 
     /**
@@ -605,15 +641,22 @@ export class CDUtil {
         }
     }
 
-    async listEC2TagFilters() {
+    async listEC2TagFilters(deploymentGroupName: string) {
 
-        let dg = await this.getDeploymentGroup(this.conf.get("deploymentGroupName"));
+        let dg = await this.getDeploymentGroup(deploymentGroupName);
 
         let tagFilters: vscode.TreeItem[] = [];
         // TODO: Check if ec2TagSet/ec2TagFilters is undefined
-        dg.Data.ec2TagFilters.forEach(filter => {
-            tagFilters.push(TreeItemUtil.addProperty(filter.Key, filter.Value, undefined, false))
-        });
+        if (dg.Data.ec2TagFilters) {
+            dg.Data.ec2TagFilters.forEach(filter => {
+                let treeItem = new vscode.TreeItem(`${filter.Key}=${filter.Value}`, vscode.TreeItemCollapsibleState.None);
+                treeItem.iconPath = {
+                    light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/tag.svg")),
+                    dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/tag.svg")),
+                }
+                tagFilters.push(treeItem);
+            });
+        }
 
         return tagFilters;
     }
@@ -648,17 +691,35 @@ export class CDUtil {
             }
 
             await this.codedeploy.updateDeploymentGroup(params).promise();
-            console.log(`ASG added to Deployment Group`);
+            console.log(`ASG ${dialog.getResponse("asgName")} added to Deployment Group`);
         }
     }
 
-    async getApplicationsAsQuickPick() {
-        // TODO:
-        throw "NotImplemented";
+    async getApplicationsAsQuickPickItems() {
+
+        this.initClient();
+
+        let listResponse = await this.codedeploy.listApplications({}).promise();
+        let quickPickItems: QuickPickItem[] = [];
+
+        if (listResponse.applications) {
+
+            if (listResponse.applications.length > 0) {
+                let batchResponse = await this.codedeploy.batchGetApplications({ applicationNames: listResponse.applications }).promise();
+
+                batchResponse.applicationsInfo.forEach(appInfo => {
+
+                    // Limited to CodeDeploy EC2
+                    if (appInfo.computePlatform == "Server") {
+
+                        let item: QuickPickItem = new QuickPickItem(appInfo.applicationName, "");
+                        quickPickItems.push(item);
+                    }
+                });
+            }
+        }
+
+        return quickPickItems;
     }
 
-    async getDeploymentGroupsAsQuickPicks() {
-        // TODO:
-        throw "NotImplemented";
-    }
 }

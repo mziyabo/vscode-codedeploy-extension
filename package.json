@@ -62,7 +62,7 @@
       {
         "command": "cdExplorer.selectApplication",
         "title": "%cdExplorer.selectExisting.title%",
-        "icon":{
+        "icon": {
           "light": "resources/light/add.svg",
           "dark": "resources/dark/add.svg"
         }
@@ -101,7 +101,7 @@
       },
       {
         "command": "cdExplorer.createDeploymentGroup",
-        "title": "%cdExplorer.addDeploymentGroup.title%"
+        "title": "%cdExplorer.createDeploymentGroup.title%"
       },
       {
         "command": "cdExplorer.deleteDeploymentGroup",
@@ -111,7 +111,19 @@
     "menus": {
       "commandPalette": [
         {
+          "command": "cdExplorer.selectApplication",
+          "when": "never"
+        },
+        {
           "command": "cdExplorer.openconsole",
+          "when": "never"
+        },
+        {
+          "command": "cdExplorer.deploy",
+          "when": "never"
+        },
+        {
+          "command": "cdExplorer.deleteApplication",
           "when": "never"
         },
         {
@@ -146,9 +158,8 @@
       "view/title": [
         {
           "command": "cdExplorer.selectApplication",
-          "when": "view == cdExplorer",
+          "when": "view == cdExplorer && !config.codedeploy.linkedToCodedeployApplication",
           "group": "navigation"
-
         },
         {
           "command": "cdExplorer.refresh",
@@ -209,7 +220,7 @@
         },
         {
           "command": "cdExplorer.refresh",
-          "when": "view == cdExplorer && viewItem =~ /application|deployment/",
+          "when": "view == cdExplorer && viewItem =~ /application|deployment|ec2TagFilter|autoScalingGroups/",
           "group": "z_extension"
         },
         {

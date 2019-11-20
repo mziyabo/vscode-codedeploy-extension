@@ -10,6 +10,8 @@
     "cdExplorer.configureRevisionLocation.title": "Configure Revision Locations",
     "cdExplorer.addEC2Tag.title": "Add EC2 Tag Filter",
     "cdExplorer.addASG.title": "Add AutoScaling Group",
+    "cdExplorer.createDeploymentGroup.title": "Create Deployment Group",
+    "cdExplorer.deleteDeploymentGroup.title": "Delete Deployment Group",
     "codedeploy.region.description": "AWS Region",
     "codedeploy.applicationName.title": "CodeDeploy Application Name",
     "codedeploy.deploymentGroupName.description": "CodeDeploy Deployment Group",

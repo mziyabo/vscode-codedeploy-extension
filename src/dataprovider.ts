@@ -64,7 +64,8 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
 
                 case "deploymentGroups":
                     // TODO: replace with list DeploymentGroups- transition from 1:1 mapping with Workspace
-                    return [await this.cdUtil.getDeploymentGroup(this.conf.get("deploymentGroupName"))];
+                    // return [await this.cdUtil.getDeploymentGroup(this.conf.get("deploymentGroupName"))];
+                    return await this.cdUtil.getDeploymentGroupsTreeItems();
                     break;
 
                 case "deploymentGroup":
@@ -72,7 +73,8 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                     break;
 
                 case "deployments":
-                    return this.cdUtil.getDeployments();
+                    let deploymentGroup: string = element.id.substr(20, element.id.length);
+                    return this.cdUtil.getDeployments(deploymentGroup);
                     break;
 
                 case "deployment":
@@ -80,7 +82,11 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                     break;
 
                 case "ec2TagFilters":
-                    return this.cdUtil.listEC2TagFilters();
+                    return this.cdUtil.listEC2TagFilters(element.id.substr(15, element.id.length));
+                    break;
+
+                case "autoScalingGroups":
+                    return this.cdUtil.listAutoScalingGroups(element.id.substr(12, element.id.length));
                     break;
 
                 default:
@@ -114,7 +120,9 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         ];
 
         labels.forEach(element => {
-            treeItems.push(TreeItemUtil.addCollapsedItem(element.label, element.contextValue));
+            let treeItem = TreeItemUtil.addCollapsedItem(element.label, element.contextValue);
+            treeItem.collapsibleState = vscode.TreeItemCollapsibleState.Expanded;
+            treeItems.push(treeItem);
         });
 
         return treeItems;
@@ -175,12 +183,14 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         this.cdUtil.configureRevisionLocations();
     }
 
-    async addASG() {
+    async addASG(node: vscode.TreeItem) {
+        // TODO: retrieve DeploymentId from node: autoscalingGroups
         await this.cdUtil.addASG();
         this.refresh();
     }
 
-    async addEC2Tag() {
+    async addEC2Tag(node: vscode.TreeItem) {
+        // TODO: retrieve DeploymentId from node: ec2TagFilters
         await this.cdUtil.addEC2Tag();
         this.refresh();
     }
@@ -190,7 +200,6 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         // TODO: prompt/warn user of deletion
         await this.cdUtil.delete(node);
         this.unlinkWorkspace();
-        
     }
 
     unlinkWorkspace(): any {
