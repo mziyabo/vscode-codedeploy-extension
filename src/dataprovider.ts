@@ -84,7 +84,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                     break;
 
                 case "autoScalingGroups":
-                    return this.cdUtil.listAutoScalingGroups(element.id.substr(12, element.id.length));
+                    return this.cdUtil.getAutoScalingGroups(element.id.substr(12, element.id.length));
                     break;
 
                 default:
@@ -182,12 +182,15 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
 
     async addASG(node: vscode.TreeItem) {
         // TODO: retrieve DeploymentId from node: autoscalingGroups
-        await this.cdUtil.addASG();
+        let deploymentGroupName = node.id.substr(12, node.id.length);
+
+        await this.cdUtil.addASG(deploymentGroupName);
         this.refresh();
     }
 
     async addEC2Tag(node: vscode.TreeItem) {
         // TODO: retrieve DeploymentId from node: ec2TagFilters
+
         await this.cdUtil.addEC2Tag();
         this.refresh();
     }

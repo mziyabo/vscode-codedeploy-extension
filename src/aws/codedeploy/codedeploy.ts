@@ -11,11 +11,9 @@ import { TreeItemUtil } from '../../shared/ui/treeItemUtil';
 import { IAMUtil } from '../iam/iam';
 import { get } from 'http';
 import { exists } from 'fs';
+import { autoscalingUtil } from '../autoscaling/autoscaling';
 
 export class CDUtil {
-    listAutoScalingGroups(arg0: string): vscode.TreeItem[] | PromiseLike<vscode.TreeItem[]> {
-        throw new Error("Method not implemented.");
-    }
 
     public Application: CDApplication;
     public Deployments: CDDeployment[];
@@ -309,8 +307,8 @@ export class CDUtil {
                     console.log(`Deployment Started ${response.deploymentId}`);
 
                     let openResponse = await vscode.window.showInformationMessage(`Open Deployment ${response.deploymentId} in AWS Console to track progress?`, "Yes", "No");
-                    
-                    if(openResponse=="Yes"){
+
+                    if (openResponse == "Yes") {
                         let uri = `${this.conf.get("region")}.console.aws.amazon.com/codesuite/codedeploy/deployments/${response.deploymentId}`
                         vscode.commands.executeCommand('vscode.open', vscode.Uri.parse("https://" + uri));
                     }
@@ -387,7 +385,7 @@ export class CDUtil {
 
             var response = await this.codedeploy.listDeployments(deploymentsParams).promise();
 
-            
+
             let deploymentIds: string[] = await response.deployments;
             let limit = deploymentIds.length > 10 ? 10 : deploymentIds.length;
 
@@ -450,7 +448,7 @@ export class CDUtil {
             deployments.push(d);
         }
 
-        return deployments.sort((a,b)=>{ return b.Data.createTime-a.Data.createTime});
+        return deployments.sort((a, b) => { return b.Data.createTime - a.Data.createTime });
     }
 
     /**
@@ -698,35 +696,34 @@ export class CDUtil {
     /**
      * Add ASG to Deployment Group
      */
-    async addASG() {
+    async addASG(deploymentGroupName: string) {
 
-        let dialog: Dialog = new Dialog();
+        let asgUtil = new autoscalingUtil();
 
-        dialog.addPrompt("asgName", async () => {
-            // TODO: user QuickPickItem for AutoScalingGroup
-            await vscode.window.showInputBox({ prompt: "Enter AutoScaling Group Name:", ignoreFocusOut: true })
+        let asgs = await vscode.window.showQuickPick(await asgUtil.getAsgsAsQuickPickItems(), {
+            placeHolder: "Select AutoScaling Group(s):",
+            canPickMany: true,
+            ignoreFocusOut: true
+        })
+
+        let autoScalingGroups = [];
+        asgs.forEach(item => {
+            autoScalingGroups.push(item.label);
         });
 
-        dialog.run();
+        this.initClient();
 
-        if (!dialog.cancelled) {
+        let dg: CDDeploymentGroup = await this.getDeploymentGroup(this.conf.get("deploymentGroupName"));
 
-            this.initClient();
-
-            let dg: CDDeploymentGroup = await this.getDeploymentGroup(this.conf.get("deploymentGroupName"));
-            let existingASGs: string[] = dg.Data.autoScalingGroups;
-
-            existingASGs.push(dialog.getResponse("asgName"));
-
-            let params = {
-                autoScalingGroups: existingASGs,
-                applicationName: this.conf.get("applicationName"),
-                deploymentGroupName: this.conf.get("deploymentGroupName")
-            }
-
-            await this.codedeploy.updateDeploymentGroup(params).promise();
-            console.log(`ASG ${dialog.getResponse("asgName")} added to Deployment Group`);
+        let params = {
+            autoScalingGroups: autoScalingGroups,
+            applicationName: this.conf.get("applicationName"),
+            currentDeploymentGroupName: deploymentGroupName
         }
+
+        await this.codedeploy.updateDeploymentGroup(params).promise();
+        console.log(`ASG(s) added to Deployment Group ${deploymentGroupName}`);
+
     }
 
     async getApplicationsAsQuickPickItems() {
@@ -752,5 +749,18 @@ export class CDUtil {
         }
 
         return quickPickItems;
+    }
+
+    async getAutoScalingGroups(deploymentGroupName: string): Promise<vscode.TreeItem[]> {
+
+        let dg = await this.getDeploymentGroup(deploymentGroupName);
+        let asgs = [];
+
+        dg.Data.autoScalingGroups.forEach(asg => {
+            let treeItem = new vscode.TreeItem(asg.name, vscode.TreeItemCollapsibleState.None)
+            asgs.push(treeItem)
+        });
+
+        return asgs;
     }
 }

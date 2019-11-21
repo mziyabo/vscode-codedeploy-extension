@@ -230,7 +230,12 @@
         {
           "command": "cdExplorer.addEC2Tag",
           "when": "viewItem == ec2TagFilters",
-          "group": "ec2TagManage@1"
+          "group": "ec2tagfilter_manage@1"
+        },
+        {
+          "command": "cdExplorer.addASG",
+          "when": "viewItem == autoScalingGroups",
+          "group": "autoscaling_manage@1"
         }
       ]
     },
