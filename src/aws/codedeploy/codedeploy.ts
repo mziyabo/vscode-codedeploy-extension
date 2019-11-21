@@ -294,23 +294,22 @@ export class CDUtil {
                 }
             }
 
-            vscode.window.withProgress({
+            await vscode.window.withProgress({
                 cancellable: false,
                 title: "Creating CodeDeploy Application",
                 location: vscode.ProgressLocation.Window
-            }
-                , async (progress, token) => {
+            }, async (progress, token) => {
 
-                    let response = await this.codedeploy.createDeployment(params).promise();
-                    console.log(`Deployment Started ${response.deploymentId}`);
+                let response = await this.codedeploy.createDeployment(params).promise();
+                console.log(`Deployment Started ${response.deploymentId}`);
 
-                    let openResponse = await vscode.window.showInformationMessage(`Open Deployment ${response.deploymentId} in AWS Console to track progress?`, "Yes", "No");
+                let openResponse = await vscode.window.showInformationMessage(`Open Deployment ${response.deploymentId} in AWS Console to track progress?`, "Yes", "No");
 
-                    if (openResponse == "Yes") {
-                        let uri = `${this.conf.get("region")}.console.aws.amazon.com/codesuite/codedeploy/deployments/${response.deploymentId}`
-                        vscode.commands.executeCommand('vscode.open', vscode.Uri.parse("https://" + uri));
-                    }
-                });
+                if (openResponse == "Yes") {
+                    let uri = `${this.conf.get("region")}.console.aws.amazon.com/codesuite/codedeploy/deployments/${response.deploymentId}`
+                    vscode.commands.executeCommand('vscode.open', vscode.Uri.parse("https://" + uri));
+                }
+            });
         }
 
     }
@@ -407,10 +406,16 @@ export class CDUtil {
 
                         };
                     }
-                    else {
+                    else if (deployment.Data.status == "Succeeded") {
                         deployment.iconPath = {
                             light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/check.svg")),
                             dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/check.svg"))
+                        };
+                    }
+                    else if (deployment.Data.status == "InProgress") {
+                        deployment.iconPath = {
+                            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/progress.svg")),
+                            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/progress.svg"))
                         };
                     }
 
@@ -552,6 +557,13 @@ export class CDUtil {
                             treeitem.iconPath = {
                                 light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/succeededTarget.svg")),
                                 dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/succeededTarget.svg"))
+                            };
+                            break;
+
+                        case "InProgress":
+                            treeitem.iconPath = {
+                                light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/pendingTarget.svg")),
+                                dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/pendingTarget.svg"))
                             };
                             break;
 
@@ -705,10 +717,11 @@ export class CDUtil {
         this.initClient();
 
         let dg = await this.getDeploymentGroup(deploymentGroupName);
+        let updateResponse;
 
         if (dg.Data.ec2TagFilters) {
             // Update ec2TagFilters
-            let ec2TagFilters = [].filter((dg) => { dg.Key != ec2TagKey });
+            let ec2TagFilters = dg.Data.ec2TagFilters.filter((dg) => { return dg.Key != ec2TagKey });
 
             let params = {
                 ec2TagFilters: ec2TagFilters,
@@ -716,13 +729,13 @@ export class CDUtil {
                 applicationName: this.conf.get("applicationName")
             }
 
-            await this.codedeploy.updateDeploymentGroup(params);
+            updateResponse = await this.codedeploy.updateDeploymentGroup(params).promise();
 
         }
         else if (dg.Data.ec2TagSet) {
 
             // Update ec2TagSet
-            let ec2TagSet = {ec2TagSetList:[]};
+            let ec2TagSet = { ec2TagSetList: [] };
             dg.Data.ec2TagSet.ec2TagSetList.forEach(ec2TagList => {
                 let _ec2TagList = ec2TagList.filter((dg) => { return dg.Key != ec2TagKey });
                 if (_ec2TagList.length > 0) {
@@ -736,8 +749,37 @@ export class CDUtil {
                 applicationName: this.conf.get("applicationName")
             }
 
-            let response = await this.codedeploy.updateDeploymentGroup(params).promise();
-            console.log(`Successfully deleted EC2 Tag ${ec2TagKey}`);
+            updateResponse = await this.codedeploy.updateDeploymentGroup(params).promise();
+        }
+        
+        // TODO: Check UpdateResponse for success
+        if (updateResponse) {
+            console.log(`Successfully deleted ${deploymentGroupName} EC2 Tag Filter ${ec2TagKey}`);
+        }
+    }
+
+    async removeASG(autoscalingGroupName:string, deploymentGroupName:string){
+        
+        this.initClient();
+
+        let dg = await this.getDeploymentGroup(deploymentGroupName);
+        let updateResponse;
+
+        if (dg.Data.autoScalingGroups) {
+            let autoScalingGroups = dg.Data.autoScalingGroups.filter((asg) => { asg.Key != autoscalingGroupName });
+
+            let params = {
+                autoScalingGroups: autoScalingGroups,
+                currentDeploymentGroupName: deploymentGroupName,
+                applicationName: this.conf.get("applicationName")
+            }
+
+            updateResponse = await this.codedeploy.updateDeploymentGroup(params).promise();
+        }
+
+        // TODO: Check UpdateResponse for success
+        if (updateResponse) {
+            console.log(`Successfully removed ${deploymentGroupName} AutoScaling Group ${autoscalingGroupName}`);
         }
     }
 
@@ -808,6 +850,7 @@ export class CDUtil {
 
         dg.Data.autoScalingGroups.forEach(asg => {
             let treeItem = new vscode.TreeItem(asg.name, vscode.TreeItemCollapsibleState.None)
+            treeItem.contextValue = `autoscaling_${deploymentGroupName}`;
             asgs.push(treeItem)
         });
 

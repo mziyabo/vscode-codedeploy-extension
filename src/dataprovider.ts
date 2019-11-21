@@ -5,7 +5,7 @@ import { TreeItemUtil } from './shared/ui/treeItemUtil';
 import { unlink } from 'fs';
 
 export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
-
+    
     private conf;
 
     private _onDidChangeTreeData: vscode.EventEmitter<CDApplication | undefined> = new vscode.EventEmitter<CDApplication | undefined>();
@@ -224,6 +224,15 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         settings.forEach(setting => {
             this.conf.update(setting, undefined);
         });
+
+        this.refresh();
+    }
+    
+    async removeASG(node: vscode.TreeItem) {
+        let autoScalingGroupName = node.label;
+        let deploymentGroupName = node.contextValue.substr(12, node.contextValue.length);
+
+        await this.cdUtil.removeASG(autoScalingGroupName, deploymentGroupName);
 
         this.refresh();
     }

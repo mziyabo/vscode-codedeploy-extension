@@ -104,6 +104,10 @@
         "title": "%cdExplorer.deleteEC2Tag.title%"
       },
       {
+        "command": "cdExplorer.deleteASG",
+        "title": "%cdExplorer.deleteASG.title%"
+      },
+      {
         "command": "cdExplorer.addASG",
         "title": "%cdExplorer.addASG.title%"
       },
@@ -222,13 +226,18 @@
           "group": "deploymentGroup@1"
         },
         {
+          "command": "cdExplorer.deleteASG",
+          "when": "view == cdExplorer && viewItem =~ /autoscaling_/",
+          "group": "autoscaling_manage@1"
+        },
+        {
           "command": "cdExplorer.viewDeployment",
           "when": "view == cdExplorer && viewItem == deployment",
           "group": "1_view_deployment"
         },
         {
           "command": "cdExplorer.refresh",
-          "when": "view == cdExplorer && viewItem =~ /application|deployment|ec2TagFilter|autoScalingGroups/",
+          "when": "view == cdExplorer && viewItem =~ /application|deployment|ec2TagFilter|autoScalingGroups|autoscaling_/",
           "group": "z_extension"
         },
         {
