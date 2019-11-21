@@ -9,6 +9,7 @@
     "cdExplorer.deleteApplication.title": "Delete Application",
     "cdExplorer.configureRevisionLocation.title": "Configure Revision Locations",
     "cdExplorer.addEC2Tag.title": "Add EC2 Tag Filter",
+    "cdExplorer.deleteEC2Tag.title": "Delete",
     "cdExplorer.addASG.title": "Add AutoScaling Group",
     "cdExplorer.createDeploymentGroup.title": "Create Deployment Group",
     "cdExplorer.deleteDeploymentGroup.title": "Delete Deployment Group",

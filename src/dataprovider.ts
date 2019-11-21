@@ -190,8 +190,8 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
 
     async addEC2Tag(node: vscode.TreeItem) {
         // TODO: retrieve DeploymentId from node: ec2TagFilters
-
-        await this.cdUtil.addEC2Tag();
+        let deploymentGroupName = node.id.substr(15 ,node.label.length);
+        await this.cdUtil.addEC2Tag(deploymentGroupName);
         this.refresh();
     }
 
@@ -200,6 +200,13 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         // TODO: prompt/warn user of deletion
         await this.cdUtil.delete(node);
         this.unlinkWorkspace();
+    }
+
+    async deleteEC2TagFilter(node: vscode.TreeItem){
+        let deploymentGroupName =  node.contextValue.substr(13,node.contextValue.length);
+        let ec2TagKey = node.id;
+        this.cdUtil.deleteEC2TagFilter(ec2TagKey, deploymentGroupName);
+        this.refresh();
     }
 
     unlinkWorkspace(): any {

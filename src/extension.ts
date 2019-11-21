@@ -21,6 +21,7 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('cdExplorer.openconsole', node => { dataProvider.openConsole(node) }, this);
     vscode.commands.registerCommand('cdExplorer.viewDeployment', node => { dataProvider.viewDeployment(node) }, this);
     vscode.commands.registerCommand('cdExplorer.unlinkWorkspace', () => dataProvider.unlinkWorkspace());
+    vscode.commands.registerCommand('cdExplorer.deleteEC2Tag', node => dataProvider.deleteEC2TagFilter(node));
 
 }
 

@@ -9,8 +9,6 @@ import { Dialog } from '../../shared/ui/dialog';
 import { QuickPickItem } from '../../shared/ui/quickpickitem';
 import { TreeItemUtil } from '../../shared/ui/treeItemUtil';
 import { IAMUtil } from '../iam/iam';
-import { get } from 'http';
-import { exists } from 'fs';
 import { autoscalingUtil } from '../autoscaling/autoscaling';
 
 export class CDUtil {
@@ -387,7 +385,8 @@ export class CDUtil {
 
 
             let deploymentIds: string[] = await response.deployments;
-            let limit = deploymentIds.length > 10 ? 10 : deploymentIds.length;
+            // TODO: replace limit with configuration
+            let limit = deploymentIds.length > 5 ? 5 : deploymentIds.length;
 
             if (deploymentIds.length > 0) {
                 let _deployments = await this.batchGetDeployments(deploymentIds.slice(0, limit));
@@ -621,7 +620,7 @@ export class CDUtil {
     /**
      * Add EC2 Tag Filter
      */
-    async addEC2Tag() {
+    async addEC2Tag(deploymentGroupName: string) {
 
         let dialog: Dialog = new Dialog();
 
@@ -634,8 +633,8 @@ export class CDUtil {
 
             this.initClient();
 
-            let dg: CDDeploymentGroup = await this.getDeploymentGroup(this.conf.get("deploymentGroupName"));
-            let existingFilters = dg[0].Data.ec2TagFilters ? dg[0].Data.ec2TagFilters : [];
+            let dg: CDDeploymentGroup = await this.getDeploymentGroup(deploymentGroupName);
+            let existingFilters = dg.Data.ec2TagFilters ? dg.Data.ec2TagFilters : [];
 
             let tag = {
                 Key: dialog.getResponse("tagName"),
@@ -648,11 +647,11 @@ export class CDUtil {
             let params = {
                 ec2TagFilters: existingFilters,
                 applicationName: this.conf.get("applicationName"),
-                currentDeploymentGroupName: this.conf.get("deploymentGroupName")
+                currentDeploymentGroupName: deploymentGroupName
             }
 
             await this.codedeploy.updateDeploymentGroup(params).promise();
-            console.log(`EC2 Tag Filters added`);
+            console.log(`EC2 Tag Filter added`);
         }
     }
 
@@ -665,10 +664,15 @@ export class CDUtil {
         if (dg.Data.ec2TagFilters) {
             dg.Data.ec2TagFilters.forEach(filter => {
                 let treeItem = new vscode.TreeItem(`${filter.Key}=${filter.Value}`, vscode.TreeItemCollapsibleState.None);
+
                 treeItem.iconPath = {
                     light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/tag.svg")),
                     dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/tag.svg")),
                 }
+
+                treeItem.contextValue = `ec2TagFilter_${deploymentGroupName}`;
+                treeItem.id = filter.Key;
+
                 tagFilters.push(treeItem);
             });
         }
@@ -679,18 +683,62 @@ export class CDUtil {
                 ec2TagList.forEach(ec2Tag => {
 
                     let treeItem = new vscode.TreeItem(`${ec2Tag.Key}=${ec2Tag.Value}`, vscode.TreeItemCollapsibleState.None);
+
                     treeItem.iconPath = {
                         light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/tag.svg")),
                         dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/tag.svg")),
                     }
 
-                    tagFilters.push(treeItem);
+                    treeItem.contextValue = `ec2TagFilter_${deploymentGroupName}`;
+                    treeItem.id = ec2Tag.Key;
 
+                    tagFilters.push(treeItem);
                 });
             });
         }
 
         return tagFilters;
+    }
+
+    async deleteEC2TagFilter(ec2TagKey: string, deploymentGroupName: string) {
+
+        this.initClient();
+
+        let dg = await this.getDeploymentGroup(deploymentGroupName);
+
+        if (dg.Data.ec2TagFilters) {
+            // Update ec2TagFilters
+            let ec2TagFilters = [].filter((dg) => { dg.Key != ec2TagKey });
+
+            let params = {
+                ec2TagFilters: ec2TagFilters,
+                currentDeploymentGroupName: deploymentGroupName,
+                applicationName: this.conf.get("applicationName")
+            }
+
+            await this.codedeploy.updateDeploymentGroup(params);
+
+        }
+        else if (dg.Data.ec2TagSet) {
+
+            // Update ec2TagSet
+            let ec2TagSet = {ec2TagSetList:[]};
+            dg.Data.ec2TagSet.ec2TagSetList.forEach(ec2TagList => {
+                let _ec2TagList = ec2TagList.filter((dg) => { return dg.Key != ec2TagKey });
+                if (_ec2TagList.length > 0) {
+                    ec2TagSet.ec2TagSetList.push(_ec2TagList);
+                }
+            });
+
+            let params = {
+                ec2TagSet: ec2TagSet,
+                currentDeploymentGroupName: deploymentGroupName,
+                applicationName: this.conf.get("applicationName")
+            }
+
+            let response = await this.codedeploy.updateDeploymentGroup(params).promise();
+            console.log(`Successfully deleted EC2 Tag ${ec2TagKey}`);
+        }
     }
 
     /**
@@ -706,24 +754,26 @@ export class CDUtil {
             ignoreFocusOut: true
         })
 
-        let autoScalingGroups = [];
-        asgs.forEach(item => {
-            autoScalingGroups.push(item.label);
-        });
+        if (asgs) {
 
-        this.initClient();
+            let autoScalingGroups = [];
+            asgs.forEach(item => {
+                autoScalingGroups.push(item.label);
+            });
 
-        let dg: CDDeploymentGroup = await this.getDeploymentGroup(this.conf.get("deploymentGroupName"));
+            this.initClient();
 
-        let params = {
-            autoScalingGroups: autoScalingGroups,
-            applicationName: this.conf.get("applicationName"),
-            currentDeploymentGroupName: deploymentGroupName
+            let dg: CDDeploymentGroup = await this.getDeploymentGroup(this.conf.get("deploymentGroupName"));
+
+            let params = {
+                autoScalingGroups: autoScalingGroups,
+                applicationName: this.conf.get("applicationName"),
+                currentDeploymentGroupName: deploymentGroupName
+            }
+
+            await this.codedeploy.updateDeploymentGroup(params).promise();
+            console.log(`ASG(s) added to Deployment Group ${deploymentGroupName}`);
         }
-
-        await this.codedeploy.updateDeploymentGroup(params).promise();
-        console.log(`ASG(s) added to Deployment Group ${deploymentGroupName}`);
-
     }
 
     async getApplicationsAsQuickPickItems() {

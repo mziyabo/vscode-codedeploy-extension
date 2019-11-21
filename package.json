@@ -100,6 +100,10 @@
         "title": "%cdExplorer.addEC2Tag.title%"
       },
       {
+        "command": "cdExplorer.deleteEC2Tag",
+        "title": "%cdExplorer.deleteEC2Tag.title%"
+      },
+      {
         "command": "cdExplorer.addASG",
         "title": "%cdExplorer.addASG.title%"
       },
@@ -230,6 +234,11 @@
         {
           "command": "cdExplorer.addEC2Tag",
           "when": "viewItem == ec2TagFilters",
+          "group": "ec2tagfilters_manage@1"
+        },
+        {
+          "command": "cdExplorer.deleteEC2Tag",
+          "when": "viewItem =~ /ec2TagFilter_/",
           "group": "ec2tagfilter_manage@1"
         },
         {
