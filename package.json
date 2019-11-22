@@ -3,6 +3,9 @@
   "displayName": "AWS CodeDeploy Extension",
   "version": "0.0.1",
   "description": "vscode CodeDeploy Extension",
+  "repository": {
+    "url": ""
+  },
   "main": "./out/extension.js",
   "scripts": {
     "vscode:prepublish": "npm run compile",
