@@ -18,7 +18,8 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('cdExplorer.addEC2Tag', node => dataProvider.addEC2Tag(node));
     vscode.commands.registerCommand('cdExplorer.addASG', node => dataProvider.addASG(node));
     vscode.commands.registerCommand('cdExplorer.configureRevisionLocations', () => dataProvider.configureRevisionLocations());
-    vscode.commands.registerCommand('cdExplorer.deleteApplication', node => { dataProvider.delete(node) }, this);
+    vscode.commands.registerCommand('cdExplorer.deleteApplication', node => { dataProvider.deleteApplication(node) }, this);
+    vscode.commands.registerCommand('cdExplorer.deleteDeploymentGroup', node => { dataProvider.deleteDeploymentGroup(node) }, this);
     vscode.commands.registerCommand('cdExplorer.openconsole', node => { dataProvider.openConsole(node) }, this);
     vscode.commands.registerCommand('cdExplorer.viewDeployment', node => { dataProvider.viewDeployment(node) }, this);
     vscode.commands.registerCommand('cdExplorer.unlinkWorkspace', () => dataProvider.unlinkWorkspace());

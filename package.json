@@ -151,6 +151,10 @@
           "when": "config.codedeploy.linkedToCodedeployApplication"
         },
         {
+          "command": "cdExplorer.deleteDeploymentGroup",
+          "when": "never"
+        },
+        {
           "command": "cdExplorer.configureRevisionLocations",
           "when": "config.codedeploy.linkedToCodedeployApplication"
         },
@@ -224,6 +228,11 @@
           "group": "application_manage@1"
         },
         {
+          "command": "cdExplorer.deleteDeploymentGroup",
+          "when": "viewItem == deploymentGroup",
+          "group": "deploymentGroup_manage@2"
+        },
+        {
           "command": "cdExplorer.configureRevisionLocations",
           "when": "view == cdExplorer && viewItem == application",
           "group": "application_manage@2"
@@ -231,7 +240,7 @@
         {
           "command": "cdExplorer.deploy",
           "when": "view == cdExplorer && viewItem == deploymentGroup",
-          "group": "deploymentGroup@1"
+          "group": "deploymentGroup_manage@1"
         },
         {
           "command": "cdExplorer.deleteASG",

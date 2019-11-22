@@ -1,46 +1,35 @@
 let AWS = require("aws-sdk");
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { CDApplication, CDDeploymentGroup, CDDeployment } from "../../models/cdmodels";
-import { S3Util } from "../s3/s3";
 import { AWSRegions } from '../../models/region';
-import { ConfigurationUtil } from '../../shared/configuration/config';
 import { Dialog } from '../../shared/ui/dialog';
-import { QuickPickItem } from '../../shared/ui/quickpickitem';
 import { TreeItemUtil } from '../../shared/ui/treeItemUtil';
+import { QuickPickItem } from '../../shared/ui/quickpickitem';
+import { S3Util } from "../s3/s3";
 import { IAMUtil } from '../iam/iam';
 import { autoscalingUtil } from '../autoscaling/autoscaling';
+import { CDApplication, CDDeploymentGroup, CDDeployment } from "../../models/cdmodels";
 
 export class CDUtil {
 
-    public Application: CDApplication;
-    public Deployments: CDDeployment[];
-    public DeploymentGroup: CDDeploymentGroup;
-
+    private config;
     private codedeploy;
-    private _applicationName;
-    private _deploymentGroupName;
-    private _region;
-
-    config: ConfigurationUtil;
-    private conf = vscode.workspace.getConfiguration("codedeploy");
 
     constructor() {
-        this.config = new ConfigurationUtil();
+        // AWS.config.logger = console;
+        this.config = vscode.workspace.getConfiguration("codedeploy");
     }
 
     /**
      * Initialize/Update/Get/Refresh Global variables
      */
     async initClient() {
+        this.config = vscode.workspace.getConfiguration("codedeploy");
 
-        this.conf = vscode.workspace.getConfiguration("codedeploy");
-
-        if (this.conf.get("region")) {
-
+        if (this.config.get("region")) {
             this.codedeploy = new AWS.CodeDeploy({
                 apiVersion: '2014-10-06',
-                region: this.conf.get("region")
+                region: this.config.get("region")
             });
         }
     }
@@ -55,7 +44,7 @@ export class CDUtil {
 
         // Get CodeDeploy Application
         var applicationparams = {
-            applicationName: this.conf.get("applicationName")
+            applicationName: this.config.get("applicationName")
         };
 
         let response = await this.codedeploy.getApplication(applicationparams).promise();
@@ -63,27 +52,27 @@ export class CDUtil {
         if (response.application) {
 
             let application = new CDApplication(response.application.applicationName, vscode.TreeItemCollapsibleState.Collapsed);
+            application.description = this.config.get("region");
             application.Data = response;
-            this.Application = application;
             return application;
         }
 
         return;
     }
 
+    async addExistingApplication() {
 
-    async getExistingCodeDeploy() {
-
-        // TODO: check if an application is associated with the workspace already
         let dialog: Dialog = new Dialog();
 
         let _region = await vscode.window.showQuickPick(AWSRegions.toQuickPickItemArray(), {
-                canPickMany: false,
-                placeHolder: "Select AWS CodeDeploy Region",
-                ignoreFocusOut: true});
-        
-        if(!_region) return;
-        await this.conf.update("region", _region.label);
+            canPickMany: false,
+            placeHolder: "Select AWS CodeDeploy Region",
+            ignoreFocusOut: true
+        });
+
+        if (!_region) return;
+
+        await this.config.update("region", _region.label);
 
         dialog.addPrompt("_applicationName", async () => {
             return await vscode.window.showQuickPick(this.getApplicationsAsQuickPickItems(), {
@@ -96,8 +85,7 @@ export class CDUtil {
         await dialog.run();
 
         if (!dialog.cancelled) {
-            this._applicationName = dialog.getResponse("_applicationName");
-            await this.conf.update("applicationName", this._applicationName);
+            await this.config.update("applicationName", dialog.getResponse("_applicationName"));
         }
     }
 
@@ -106,15 +94,14 @@ export class CDUtil {
      */
     async scaffoldApplication() {
 
+
         let createAppResponse = await this.createApplication();
-
         if (createAppResponse) {
-
-            let createDeploymentGp = await vscode.window.showInformationMessage("Create Deployment Group?", "Yes", "No");
-
-            if (createDeploymentGp == "Yes") {
-                await this.createDeploymentGroup();
-                // TODO: prompt to add deployment targets ec2TargetFilter/AutoScalingGroup
+            let createDeploymentGroupResponse = await this.createDeploymentGroup();
+            // TODO: prompt to add deployment targets ec2TargetFilter/AutoScalingGroup
+            return {
+                applicationName: this.config.get("applicationName"),
+                deploymentGroupName: createDeploymentGroupResponse.deploymentGroupName
             }
         }
     }
@@ -123,39 +110,35 @@ export class CDUtil {
 
         let dialog: Dialog = new Dialog();
 
-       
         let _region = await vscode.window.showQuickPick(AWSRegions.toQuickPickItemArray(), {
             canPickMany: false,
             placeHolder: "Select AWS CodeDeploy Region",
             ignoreFocusOut: true,
         });
 
-        if(!_region) return;
-        await this.conf.update("region", _region.label);
+        if (!_region) return;
+        await this.config.update("region", _region.label);
 
         dialog.addPrompt("_applicationName", async () => { return await vscode.window.showInputBox({ prompt: "Enter Application Name" }) })
         await dialog.run();
 
         if (!dialog.cancelled) {
 
-            this._region = _region.label;
-            this._applicationName = dialog.getResponse("_applicationName");
-
             // Update Configuration
-            await this.conf.update("applicationName", this._applicationName);
+            await this.config.update("applicationName", dialog.getResponse("_applicationName"));
 
             this.initClient();
 
             // CreateApplication
             var applicationParams = {
-                applicationName: this._applicationName,
+                applicationName: dialog.getResponse("_applicationName"),
                 computePlatform: 'Server'
             };
 
             return vscode.window.withProgress(
                 {
                     cancellable: false,
-                    title: `Creating CodeDeploy Application: \'${this._applicationName}\'`,
+                    title: `Creating CodeDeploy Application: \'${dialog.getResponse("_applicationName")}\'`,
                     location: vscode.ProgressLocation.Window
                 }, async (progress, token) => {
 
@@ -163,9 +146,6 @@ export class CDUtil {
                     return response;
                 }
             );
-        }
-        else {
-            return undefined;
         }
     }
 
@@ -201,7 +181,7 @@ export class CDUtil {
 
             // CreateDeploymentGroup
             var params = {
-                applicationName: this.conf.get("applicationName"),
+                applicationName: this.config.get("applicationName"),
                 deploymentGroupName: dialog.getResponse("_deploymentGroupName"),
                 serviceRoleArn: dialog.getResponse("_serviceRoleArn")
             }
@@ -212,7 +192,10 @@ export class CDUtil {
                 location: vscode.ProgressLocation.Window
             }, async (progress, token) => {
                 let response = await this.codedeploy.createDeploymentGroup(params).promise();
-                return response;
+                return {
+                    data: response,
+                    deploymentGroupName: dialog.getResponse("_deploymentGroupName")
+                };
             });
         }
     }
@@ -241,12 +224,12 @@ export class CDUtil {
         });
 
         await dialog.run();
-        this.conf = vscode.workspace.getConfiguration("codedeploy");
+        this.config = vscode.workspace.getConfiguration("codedeploy");
 
         if (!dialog.cancelled) {
 
-            await this.conf.update("revisionBucket", dialog.getResponse("bucket"));
-            await this.conf.update("revisionLocalDirectory", dialog.getResponse("localDir").uri.fsPath);
+            await this.config.update("revisionBucket", dialog.getResponse("bucket"));
+            await this.config.update("revisionLocalDirectory", dialog.getResponse("localDir").uri.fsPath);
         }
 
         return dialog.cancelled;
@@ -267,18 +250,18 @@ export class CDUtil {
 
         // Archive revision and upload to s3
         let s3Util = new S3Util();
-        let buffer = s3Util.archive(await this.conf.get("revisionLocalDirectory"));
-        let revisionEtag: string = await s3Util.upload(buffer, this.conf.get("revisionBucket"), revisionName);
+        let buffer = s3Util.archive(await this.config.get("revisionLocalDirectory"));
+        let revisionEtag: string = await s3Util.upload(buffer, this.config.get("revisionBucket"), revisionName);
 
         if (revisionEtag) {
 
             // Create Deployment
             var params = {
-                applicationName: this.conf.get("applicationName"), /* required */
+                applicationName: this.config.get("applicationName"), /* required */
                 deploymentGroupName: deploymentGroupName,
                 revision: {
                     s3Location: {
-                        bucket: this.conf.get("revisionBucket"),
+                        bucket: this.config.get("revisionBucket"),
                         key: revisionName,
                         eTag: revisionEtag,
                         bundleType: "zip"
@@ -299,14 +282,13 @@ export class CDUtil {
                 let openResponse = await vscode.window.showInformationMessage(`Open Deployment ${response.deploymentId} in AWS Console to track progress?`, "Yes", "No");
 
                 if (openResponse == "Yes") {
-                    let uri = `${this.conf.get("region")}.console.aws.amazon.com/codesuite/codedeploy/deployments/${response.deploymentId}`
+                    let uri = `${this.config.get("region")}.console.aws.amazon.com/codesuite/codedeploy/deployments/${response.deploymentId}`
                     vscode.commands.executeCommand('vscode.open', vscode.Uri.parse("https://" + uri));
                 }
             });
         }
 
     }
-
 
     /**
      * Get Deployment Group
@@ -319,23 +301,20 @@ export class CDUtil {
 
         this.initClient();
 
-        var deploymentGroups = [];
-
         // Get Deployment Group
-        var deploygroupparams = {
-            applicationName: this.conf.get("applicationName"),
+        var params = {
+            applicationName: this.config.get("applicationName"),
             deploymentGroupName: deploymentGroupName
         };
 
-        var response = await this.codedeploy.getDeploymentGroup(deploygroupparams).promise();
+        var response = await this.codedeploy.getDeploymentGroup(params).promise();
 
         if (response.deploymentGroupInfo) {
-            this.DeploymentGroup = new CDDeploymentGroup(response.deploymentGroupInfo.deploymentGroupName);
-            this.DeploymentGroup.Data = response.deploymentGroupInfo;
-            deploymentGroups = [this.DeploymentGroup];
+            let deploymentGroup = new CDDeploymentGroup(response.deploymentGroupInfo.deploymentGroupName);
+            deploymentGroup.Data = response.deploymentGroupInfo;
+            return deploymentGroup;
         }
 
-        return this.DeploymentGroup;
     }
 
     /**
@@ -354,7 +333,7 @@ export class CDUtil {
         // Get Deployments
         // TODO: review removing this to move to showing multiple deployments
         var deploymentsParams = {
-            applicationName: this.conf.get("applicationName"),
+            applicationName: this.config.get("applicationName"),
             deploymentGroupName: deploymentGroupName,
             includeOnlyStatuses: [
                 "Created",
@@ -374,7 +353,6 @@ export class CDUtil {
         }, async (progress, token) => {
 
             var response = await this.codedeploy.listDeployments(deploymentsParams).promise();
-
 
             let deploymentIds: string[] = await response.deployments;
             // TODO: replace limit with configuration
@@ -413,9 +391,7 @@ export class CDUtil {
                     }
 
                     deploymentDetails.push(deployment);
-
                 }
-
             }
         });
 
@@ -437,13 +413,11 @@ export class CDUtil {
 
         let response = await this.codedeploy.batchGetDeployments(params).promise();
 
-        for (let index = 0; index < response.deploymentsInfo.length; index++) {
-            const deployment = response.deploymentsInfo[index];
+        response.deploymentsInfo.forEach(deployment => {
             let d: CDDeployment = new CDDeployment(deployment.deploymentId);
             d.Data = deployment;
-
             deployments.push(d);
-        }
+        });
 
         return deployments.sort((a, b) => { return b.Data.createTime - a.Data.createTime });
     }
@@ -480,22 +454,53 @@ export class CDUtil {
                 if (success) {
                     vscode.window.showTextDocument(document);
                 } else {
-                    vscode.window.showInformationMessage('Error!');
+                    vscode.window.showInformationMessage('Unknown Error');
                 }
             });
         });
 
     }
 
-    async delete(node: vscode.TreeItem) {
+    async deleteApplication(applicationName: string) {
 
         this.initClient();
 
         let params = {
-            applicationName: node.label
+            applicationName: applicationName
         };
 
-        let response = await this.codedeploy.deleteApplication(params).promise();
+        await vscode.window.withProgress(
+            {
+                cancellable: false,
+                location: vscode.ProgressLocation.Window,
+                title: `Deleting Application ${applicationName}`
+            },
+            async (progress, token) => {
+                let response = await this.codedeploy.deleteApplication(params).promise();
+            }
+        )
+    }
+
+    async deleteDeploymentGroup(deploymentGroupName: string) {
+
+        this.initClient();
+
+        let params = {
+            applicationName: this.config.get("applicationName"),
+            deploymentGroupName: deploymentGroupName
+        }
+
+        await vscode.window.withProgress(
+            {
+                cancellable: false,
+                location: vscode.ProgressLocation.Window,
+                title: `Deleting Deployment Group ${deploymentGroupName}`
+            },
+            async (progress, token) => {
+                let response = await this.codedeploy.deleteDeploymentGroup(params).promise();
+            }
+        )
+
     }
 
     async getDeploymentTargetTreeItems(deploymentId: string): Promise<vscode.TreeItem[]> {
@@ -572,15 +577,12 @@ export class CDUtil {
         }
     }
 
-    async getDeploymentGroupInfoTreeItem(deploymentGroupName: string): Promise<vscode.TreeItem[]> {
+    async getDeploymentGroupTreeItem(deploymentGroupName: string): Promise<vscode.TreeItem[]> {
 
         let dg = await this.getDeploymentGroup(deploymentGroupName);
 
         let properties = [];
         if (dg) {
-
-            //properties.push(TreeItemUtil.addProperty("SERVICE_ROLE_ARN", dg.Data.serviceRoleArn, "", true));
-            //properties.push(TreeItemUtil.addProperty("DEPLOYMENT_CONFIGURATION", dg.Data.deploymentConfigName, "", true));
 
             let tagFiltersItem = TreeItemUtil.addCollapsedItem("EC2 Tag Filters", "ec2TagFilters");
             tagFiltersItem.id = `filter_groupid_${deploymentGroupName}`;
@@ -606,20 +608,29 @@ export class CDUtil {
         this.initClient();
 
         let params = {
-            applicationName: this.conf.get("applicationName")
+            applicationName: this.config.get("applicationName")
         }
 
         let response = await this.codedeploy.listDeploymentGroups(params).promise();
         let deploymentGroups: vscode.TreeItem[] = [];
 
-        response.deploymentGroups.forEach(deploymentGroup => {
-            let treeItem: vscode.TreeItem = new vscode.TreeItem(deploymentGroup, vscode.TreeItemCollapsibleState.Collapsed);
-            treeItem.contextValue = "deploymentGroup";
+        if (response.deploymentGroups.length > 0) {
+            response.deploymentGroups.forEach(deploymentGroup => {
+                let treeItem: vscode.TreeItem = new vscode.TreeItem(deploymentGroup, vscode.TreeItemCollapsibleState.Collapsed);
+                treeItem.contextValue = "deploymentGroup";
 
-            deploymentGroups.push(treeItem);
-        });
-
-        return deploymentGroups;
+                deploymentGroups.push(treeItem);
+            });
+            return deploymentGroups;
+        }
+        else {
+            let createDeploymentHint: vscode.TreeItem = new vscode.TreeItem("-> Create Deployment Group", vscode.TreeItemCollapsibleState.None);
+            createDeploymentHint.command = {
+                command: "cdExplorer.createDeploymentGroup",
+                title: "Create Deploment Group"
+            };
+            return [createDeploymentHint];
+        }
     }
 
     /**
@@ -651,12 +662,13 @@ export class CDUtil {
 
             let params = {
                 ec2TagFilters: existingFilters,
-                applicationName: this.conf.get("applicationName"),
+                applicationName: this.config.get("applicationName"),
                 currentDeploymentGroupName: deploymentGroupName
             }
 
-            await this.codedeploy.updateDeploymentGroup(params).promise();
+            let response = await this.codedeploy.updateDeploymentGroup(params).promise();
             console.log(`EC2 Tag Filter added`);
+            return response;
         }
     }
 
@@ -665,10 +677,11 @@ export class CDUtil {
         let dg = await this.getDeploymentGroup(deploymentGroupName);
 
         let tagFilters: vscode.TreeItem[] = [];
+
         // TODO: Check if ec2TagSet/ec2TagFilters is undefined
         if (dg.Data.ec2TagFilters) {
-            dg.Data.ec2TagFilters.forEach(filter => {
-                let treeItem = new vscode.TreeItem(`${filter.Key}=${filter.Value}`, vscode.TreeItemCollapsibleState.None);
+            dg.Data.ec2TagFilters.forEach(ec2Tag => {
+                let treeItem = new vscode.TreeItem(`${ec2Tag.Key}=${ec2Tag.Value}`, vscode.TreeItemCollapsibleState.None);
 
                 treeItem.iconPath = {
                     light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/tag.svg")),
@@ -676,7 +689,7 @@ export class CDUtil {
                 }
 
                 treeItem.contextValue = `ec2TagFilter_${deploymentGroupName}`;
-                treeItem.id = `${deploymentGroupName}_${filter.Key}`;
+                treeItem.id = `${deploymentGroupName}_${ec2Tag.Key}`;
 
                 tagFilters.push(treeItem);
             });
@@ -695,7 +708,7 @@ export class CDUtil {
                     }
 
                     treeItem.contextValue = `ec2TagFilter_${deploymentGroupName}`;
-                    treeItem.id = ec2Tag.Key;
+                    treeItem.id = `${deploymentGroupName}_${ec2Tag.Key}`;
 
                     tagFilters.push(treeItem);
                 });
@@ -720,7 +733,7 @@ export class CDUtil {
             params = {
                 ec2TagFilters: ec2TagFilters,
                 currentDeploymentGroupName: deploymentGroupName,
-                applicationName: this.conf.get("applicationName")
+                applicationName: this.config.get("applicationName")
             }
         }
         else if (dg.Data.ec2TagSet) {
@@ -737,7 +750,7 @@ export class CDUtil {
             params = {
                 ec2TagSet: ec2TagSet,
                 currentDeploymentGroupName: deploymentGroupName,
-                applicationName: this.conf.get("applicationName")
+                applicationName: this.config.get("applicationName")
             }
         }
 
@@ -777,7 +790,7 @@ export class CDUtil {
             let params = {
                 autoScalingGroups: _autoScalingGroups,
                 currentDeploymentGroupName: deploymentGroupName,
-                applicationName: this.conf.get("applicationName")
+                applicationName: this.config.get("applicationName")
             }
 
             return vscode.window.withProgress(
@@ -819,16 +832,25 @@ export class CDUtil {
 
             this.initClient();
 
-            let dg: CDDeploymentGroup = await this.getDeploymentGroup(this.conf.get("deploymentGroupName"));
+            let dg: CDDeploymentGroup = await this.getDeploymentGroup(deploymentGroupName);
 
             let params = {
                 autoScalingGroups: autoScalingGroups,
-                applicationName: this.conf.get("applicationName"),
+                applicationName: this.config.get("applicationName"),
                 currentDeploymentGroupName: deploymentGroupName
             }
 
-            await this.codedeploy.updateDeploymentGroup(params).promise();
-            console.log(`ASG(s) added to Deployment Group ${deploymentGroupName}`);
+            return vscode.window.withProgress({
+                cancellable: false,
+                location: vscode.ProgressLocation.Window,
+                title: `Adding ASG(s) to Deployment Group ${deploymentGroupName}`
+            },
+                async (progress, token) => {
+                    let updateresponse = await this.codedeploy.updateDeploymentGroup(params).promise();
+                    console.log(`ASG(s) added to Deployment Group ${deploymentGroupName}`);
+                    return updateresponse;
+                }
+            )
         }
     }
 
