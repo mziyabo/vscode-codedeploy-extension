@@ -5,7 +5,7 @@ import { TreeItemUtil } from './shared/ui/treeItemUtil';
 import { unlink } from 'fs';
 
 export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
-    
+
     private conf;
 
     private _onDidChangeTreeData: vscode.EventEmitter<CDApplication | undefined> = new vscode.EventEmitter<CDApplication | undefined>();
@@ -181,7 +181,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
     }
 
     async addASG(node: vscode.TreeItem) {
-        // TODO: retrieve DeploymentId from node: autoscalingGroups
+
         let deploymentGroupName = node.id.substr(12, node.id.length);
 
         await this.cdUtil.addASG(deploymentGroupName);
@@ -189,8 +189,8 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
     }
 
     async addEC2Tag(node: vscode.TreeItem) {
-        // TODO: retrieve DeploymentId from node: ec2TagFilters
-        let deploymentGroupName = node.id.substr(15 ,node.label.length);
+
+        let deploymentGroupName = node.id.substr(15, node.label.length);
         await this.cdUtil.addEC2Tag(deploymentGroupName);
         this.refresh();
     }
@@ -202,14 +202,14 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         this.unlinkWorkspace();
     }
 
-    async deleteEC2TagFilter(node: vscode.TreeItem){
-        let deploymentGroupName =  node.contextValue.substr(13,node.contextValue.length);
-        let ec2TagKey = node.id;
+    async deleteEC2TagFilter(node: vscode.TreeItem) {
+        let deploymentGroupName = node.contextValue.substr(13, node.contextValue.length);
+        let ec2TagKey = node.id.substr(deploymentGroupName.length + 1, node.id.length);
         this.cdUtil.deleteEC2TagFilter(ec2TagKey, deploymentGroupName);
         this.refresh();
     }
 
-    unlinkWorkspace(): any {
+    unlinkWorkspace() {
 
         this.conf = vscode.workspace.getConfiguration("codedeploy");
 
@@ -221,19 +221,26 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
             "linkedToCodedeployApplication"
         ];
 
-        settings.forEach(setting => {
-            this.conf.update(setting, undefined);
+        settings.forEach(async setting => {
+            await this.conf.update(setting, undefined);
         });
 
         this.refresh();
     }
-    
+
     async removeASG(node: vscode.TreeItem) {
+
         let autoScalingGroupName = node.label;
         let deploymentGroupName = node.contextValue.substr(12, node.contextValue.length);
 
         await this.cdUtil.removeASG(autoScalingGroupName, deploymentGroupName);
 
+        this.refresh();
+    }
+
+    async createDeploymentGroup() {
+
+        await this.cdUtil.createDeploymentGroup();
         this.refresh();
     }
 

@@ -14,6 +14,7 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('cdExplorer.refresh', () => dataProvider.refresh());
     vscode.commands.registerCommand('cdExplorer.selectApplication', () => dataProvider.selectApplication());
     vscode.commands.registerCommand('cdExplorer.createApplication', () => dataProvider.createApplication());
+    vscode.commands.registerCommand('cdExplorer.createDeploymentGroup', () => dataProvider.createDeploymentGroup());
     vscode.commands.registerCommand('cdExplorer.addEC2Tag', node => dataProvider.addEC2Tag(node));
     vscode.commands.registerCommand('cdExplorer.addASG', node => dataProvider.addASG(node));
     vscode.commands.registerCommand('cdExplorer.configureRevisionLocations', () => dataProvider.configureRevisionLocations());

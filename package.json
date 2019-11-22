@@ -80,6 +80,10 @@
         }
       },
       {
+        "command": "cdExplorer.createDeployment",
+        "title": "%cdExplorer.createDeployment.title%"
+      },
+      {
         "command": "cdExplorer.stop",
         "title": "%cdExplorer.stopDeployment.title%"
       },
@@ -164,6 +168,10 @@
         },
         {
           "command": "cdExplorer.addASG",
+          "when": "never"
+        },
+        {
+          "command": "cdExplorer.createDeployment",
           "when": "never"
         }
       ],
@@ -254,6 +262,11 @@
           "command": "cdExplorer.addASG",
           "when": "viewItem == autoScalingGroups",
           "group": "autoscaling_manage@1"
+        },
+        {
+          "command": "cdExplorer.createDeploymentGroup",
+          "when": "viewItem == deploymentGroups",
+          "group": "deploymentGroups_manage@1"
         }
       ]
     },
