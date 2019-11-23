@@ -1,13 +1,16 @@
+let AWS = require('aws-sdk');
 import * as vscode from 'vscode'
 import { QuickPickItem } from '../../shared/ui/quickpickitem'
-let AWS = require('aws-sdk');
 
 export class IAMUtil {
 
-    private conf;
+    private config: vscode.WorkspaceConfiguration;
 
     constructor() {
-        this.conf = vscode.workspace.getConfiguration("codedeploy");
+        this.config = vscode.workspace.getConfiguration("codedeploy");
+        if (this.config.get("enableAwsLogging")) {
+          AWS.config.logger = console;
+        } 
     }
 
     /**

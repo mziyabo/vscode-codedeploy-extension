@@ -20,5 +20,6 @@
     "codedeploy.deploymentGroupName.description": "CodeDeploy Deployment Group",
     "codedeploy.revisionBucket.description": "CodeDeploy Revision Bucket",
     "codedeploy.revisionLocalDirectory.description": "CodeDeploy Revision Local Directory",
-    "codedeploy.linkedToCodedeployApplication.description": "Linked to CodeDeploy Application"
+    "codedeploy.isApplicationWorkspace.description": "Workspace Linked to CodeDeploy Application",
+    "codedeploy.codedeploy.enableAwsLogging.description": "Enable AWS SDK Logging"
 }

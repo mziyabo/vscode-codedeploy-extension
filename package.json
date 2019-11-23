@@ -151,7 +151,7 @@
         },
         {
           "command": "cdExplorer.createApplication",
-          "when": "!config.codedeploy.linkedToCodedeployApplication"
+          "when": "!config.codedeploy.isApplicationWorkspace"
         },
         {
           "command": "cdExplorer.deleteApplication",
@@ -189,7 +189,7 @@
       "view/title": [
         {
           "command": "cdExplorer.selectApplication",
-          "when": "view == cdExplorer && !config.codedeploy.linkedToCodedeployApplication",
+          "when": "view == cdExplorer && !config.codedeploy.isApplicationWorkspace",
           "group": "navigation"
         },
         {
@@ -204,17 +204,17 @@
         },
         {
           "command": "cdExplorer.createApplication",
-          "when": "view == cdExplorer && !config.codedeploy.linkedToCodedeployApplication",
+          "when": "view == cdExplorer && !config.codedeploy.isApplicationWorkspace",
           "group": "application_manage"
         },
         {
           "command": "cdExplorer.selectApplication",
-          "when": "view == cdExplorer && !config.codedeploy.linkedToCodedeployApplication",
+          "when": "view == cdExplorer && !config.codedeploy.isApplicationWorkspace",
           "group": "application_manage"
         },
         {
           "command": "cdExplorer.unlinkWorkspace",
-          "when": "view == cdExplorer && config.codedeploy.linkedToCodedeployApplication",
+          "when": "view == cdExplorer && config.codedeploy.isApplicationWorkspace",
           "group": "application_manage"
         },
         {
@@ -231,7 +231,7 @@
         },
         {
           "command": "cdExplorer.deleteApplication",
-          "when": "view == cdExplorer && viewItem == application && config.codedeploy.linkedToCodedeployApplication",
+          "when": "view == cdExplorer && viewItem == application && config.codedeploy.isApplicationWorkspace",
           "group": "application_manage@1"
         },
         {
@@ -311,10 +311,15 @@
             "type": "string",
             "description": "%codedeploy.revisionLocalDirectory.description%"
           },
-          "codedeploy.linkedToCodedeployApplication": {
+          "codedeploy.isApplicationWorkspace": {
             "type": "boolean",
-            "description": "%codedeploy.linkedToCodedeployApplication.description%",
+            "description": "%codedeploy.isApplicationWorkspace.description%",
             "readOnly": true,
+            "default": false
+          },
+          "codedeploy.enableAwsLogging":{
+            "type": "boolean",
+            "description": "%codedeploy.codedeploy.enableAwsLogging.description%",
             "default": false
           }
         }

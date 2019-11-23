@@ -1,21 +1,24 @@
-import * as vscode from 'vscode';
-import { QuickPickItem } from '../../shared/ui/quickpickitem';
 let AWS = require("aws-sdk");
 let AdmZip = require("adm-zip");
+import * as vscode from 'vscode';
+import { QuickPickItem } from '../../shared/ui/quickpickitem';
 
 export class S3Util {
 
-    private conf;
+    private config;
 
     constructor() {
-        this.conf = vscode.workspace.getConfiguration("codedeploy");
+        this.config = vscode.workspace.getConfiguration("codedeploy");
+        if (this.config.get("enableAwsLogging")) {
+            AWS.config.logger = console;
+        }
     }
 
     async upload(buffer: Buffer, bucketName, revisionName) {
 
         let s3 = new AWS.S3({
             apiVersion: '2006-03-01',
-            region: this.conf.get("region")
+            region: this.config.get("region")
         });
 
         let params = {
@@ -48,20 +51,20 @@ export class S3Util {
     /**
      * Returns S3 Buckets as QuickPickItem Array
      */
-    async getS3BucketsAsQuickItem(): Promise<QuickPickItem[]>{
-        
+    async getS3BucketsAsQuickItem(): Promise<QuickPickItem[]> {
+
         let buckets: vscode.QuickPickItem[] = [];
 
         let s3 = new AWS.S3({
             apiVersion: '2006-03-01',
-            region: this.conf.get("region")
+            region: this.config.get("region")
         });
-        
+
         let params = {}
-        let response  = await s3.listBuckets(params).promise();
-        
+        let response = await s3.listBuckets(params).promise();
+
         response.Buckets.forEach(bucket => {
-            buckets.push(new QuickPickItem(bucket.Name,""));
+            buckets.push(new QuickPickItem(bucket.Name, ""));
         });
 
         return buckets;

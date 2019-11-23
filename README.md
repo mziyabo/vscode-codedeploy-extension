@@ -1,5 +1,5 @@
 # vscode AWS CodeDeploy Extension
-[![Marketplace Version](https://img.shields.io/vscode-marketplace/v/mziyabo.vscode-codedeploy.svg) ![Marketplace Downloads](https://img.shields.io/vscode-marketplace/d/mziyabo.vscode-codedeploy.svg)](https://marketplace.visualstudio.com/items?itemName=mziyabo.vscode-codedeploy) 
+[![Build Status](https://travis-ci.org/mziyabo/vscode-codedeploy-extension.svg?branch=master)](https://travis-ci.org/mziyabo/vscode-codedeploy-extension) [![Marketplace Version](https://img.shields.io/vscode-marketplace/v/mziyabo.vscode-codedeploy.svg) ![Marketplace Downloads](https://img.shields.io/vscode-marketplace/d/mziyabo.vscode-codedeploy.svg)](https://marketplace.visualstudio.com/items?itemName=mziyabo.vscode-codedeploy) 
 
 vscode [AWS CodeDeploy](https://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) extension for deploying to EC2.
 

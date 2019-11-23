@@ -4,17 +4,20 @@ import { QuickPickItem } from "../../shared/ui/quickpickitem";
 
 export class autoscalingUtil {
 
-    conf;
+    private config: vscode.WorkspaceConfiguration;
 
     constructor() {
-        this.conf = vscode.workspace.getConfiguration("codedeploy");
+        this.config = vscode.workspace.getConfiguration("codedeploy");
+        if (this.config.get("enableAwsLogging")) {
+            AWS.config.logger = console;
+        }
     }
 
     async getAsgsAsQuickPickItems(): Promise<QuickPickItem[]> {
-        
-        let asgs:any[]=  await this.describeAutoScalingGroups();
-        let autoscalingGroups:QuickPickItem[] = [];
-        
+
+        let asgs: any[] = await this.describeAutoScalingGroups();
+        let autoscalingGroups: QuickPickItem[] = [];
+
         asgs.forEach(asg => {
             let item = new QuickPickItem(asg.AutoScalingGroupName, "");
             autoscalingGroups.push(item);
@@ -23,11 +26,11 @@ export class autoscalingUtil {
         return autoscalingGroups;
     }
 
-    async describeAutoScalingGroups():Promise<any []>{
-        
+    async describeAutoScalingGroups(): Promise<any[]> {
+
         let client = new AWS.AutoScaling({
             apiVersions: "2011-01-01",
-            region: this.conf.get("region")
+            region: this.config.get("region")
         });
 
         let response = await client.describeAutoScalingGroups({}).promise();

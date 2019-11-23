@@ -1,23 +1,25 @@
 let AWS = require("aws-sdk");
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { AWSRegions } from '../../models/region';
 import { Dialog } from '../../shared/ui/dialog';
 import { TreeItemUtil } from '../../shared/ui/treeItemUtil';
 import { QuickPickItem } from '../../shared/ui/quickpickitem';
 import { S3Util } from "../s3/s3";
 import { IAMUtil } from '../iam/iam';
 import { autoscalingUtil } from '../autoscaling/autoscaling';
+import { AWSRegions } from '../../models/region';
 import { CDApplication, CDDeploymentGroup, CDDeployment } from "../../models/cdmodels";
 
 export class CDUtil {
 
-    private config;
     private codedeploy;
+    private config: vscode.WorkspaceConfiguration;
 
     constructor() {
-        // AWS.config.logger = console;
         this.config = vscode.workspace.getConfiguration("codedeploy");
+        if (this.config.get("enableAwsLogging")) {
+          AWS.config.logger = console;
+        }    
     }
 
     /**

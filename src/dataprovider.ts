@@ -5,11 +5,10 @@ import { TreeItemUtil } from './shared/ui/treeItemUtil';
 
 export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 
-    private config;
-
     private _onDidChangeTreeData: vscode.EventEmitter<CDApplication | undefined> = new vscode.EventEmitter<CDApplication | undefined>();
     readonly onDidChangeTreeData: vscode.Event<CDApplication | undefined> = this._onDidChangeTreeData.event;
-
+    
+    private config: vscode.WorkspaceConfiguration;
     public cdUtil: CDUtil;
 
     constructor() {
@@ -17,29 +16,11 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         this.config = vscode.workspace.getConfiguration("codedeploy");
     }
 
-    async getTreeItem(element: CDApplication): Promise<vscode.TreeItem> {
-
-        this.config = vscode.workspace.getConfiguration("codedeploy");
-
-        if (!this.config.get("applicationName")) {
-            return;
-        }
-
-        if (!element) {
-            let application: CDApplication = await this.cdUtil.getApplication();
-            return application;
-
-        } else {
-            return element;
-        }
+    async getTreeItem(element: vscode.TreeItem): Promise<vscode.TreeItem> {
+        return element;
     }
 
-    getParent(element?: CDApplication): Promise<CDApplication> {
-        this.config = vscode.workspace.getConfiguration("codedeploy");
-        if (!this.config.get("applicationName")) {
-            return;
-        }
-
+    getParent(element?: vscode.TreeItem): Promise<vscode.TreeItem> {
         return Promise.resolve(element);
     }
 
@@ -48,11 +29,11 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         this.config = vscode.workspace.getConfiguration("codedeploy");
 
         if (!this.config.get("applicationName")) {
-            await this.config.update("linkedToCodedeployApplication", false);
+            await this.config.update("isApplicationWorkspace", false);
             return;
         }
 
-        await this.config.update("linkedToCodedeployApplication", true);
+        await this.config.update("isApplicationWorkspace", true);
 
         if (element) {
 
@@ -137,7 +118,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
     async createApplication() {
         let response = await this.cdUtil.scaffoldApplication();
         this.refresh();
-        //Hint add targets
+        // Hint add targets
         if (response.deploymentGroupName) {
 
             let hintResponse = await vscode.window.showInformationMessage(`Add targets for ${response.deploymentGroupName}`, "Add AutoScaling Group", "Add EC2 Tag Filters", "Not Now")
@@ -157,7 +138,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
     }
 
     async deploy(node: vscode.TreeItem) {
-        this.cdUtil.deploy(node.label);
+        await this.cdUtil.deploy(node.label);
         this.refresh();
     }
 
@@ -165,7 +146,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
 
         let uri: string;
 
-        if (this.config.get("linkedToCodedeployApplication") && node != undefined) {
+        if (this.config.get("isApplicationWorkspace") && node != undefined) {
             uri = `${this.config.get("region")}.console.aws.amazon.com/codesuite/codedeploy`;
 
             switch (node.contextValue) {
@@ -243,7 +224,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
             "deploymentGroupName",
             "revisionBucket",
             "revisionLocalDirectory",
-            "linkedToCodedeployApplication"
+            "isApplicationWorkspace"
         ];
 
         settings.forEach(async setting => {
