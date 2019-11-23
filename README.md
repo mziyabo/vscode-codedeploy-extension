@@ -1,12 +1,15 @@
 # vscode AWS CodeDeploy Extension
-vscode [AWS CodeDeploy](https://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) extension for EC2.
+[![Marketplace Version](https://img.shields.io/vscode-marketplace/v/mziyabo.vscode-codedeploy.svg) ![Marketplace Downloads](https://img.shields.io/vscode-marketplace/d/mziyabo.vscode-codedeploy.svg)](https://marketplace.visualstudio.com/items?itemName=mziyabo.vscode-codedeploy) 
+
+vscode [AWS CodeDeploy](https://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) extension for deploying to EC2.
 
 ## Features
-- Link AWS CodeDeploy Application to vscode workspace
+- Link AWS CodeDeploy Application to vscode workspace and view/manage application.
 
 ![view](./resources/marketplace/explorer.PNG)
-- Create CodeDeploy Application and/ Deployment Groups
-- Deploy to CodeDeploy from a working folder or project using S3 revision locations.
+
+- Create CodeDeploy Application and/ Deployment Groups.
+- Deploy to CodeDeploy from a vscode working folder or project using S3 revision locations.
 
 ## Installation
 1. Install aws-cli and [configure credentials](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html). Alternatively setup AWS Credentials from [Environment Variables](https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/loading-node-credentials-environment.html)

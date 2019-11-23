@@ -59,7 +59,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
             var contextValue = element.contextValue;
             switch (contextValue) {
                 case "application":
-                    return this.applicationTreeItems();
+                    return this.getApplicationTreeItems();
                     break;
 
                 case "deploymentGroups":
@@ -106,7 +106,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
     /**
      * Retrieve TreeItems for Application contextValues
      */
-    applicationTreeItems() {
+    getApplicationTreeItems() {
 
         let treeItems: vscode.TreeItem[] = [];
 

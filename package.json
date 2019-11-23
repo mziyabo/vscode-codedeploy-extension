@@ -1,16 +1,16 @@
 {
-  "name": "vscode-codedeploy-extension",
-  "displayName": "AWS CodeDeploy Extension",
+  "name": "vscode-codedeploy",
+  "displayName": "AWS CodeDeploy vscode Extension",
   "version": "0.0.1",
   "description": "vscode CodeDeploy Extension",
+  "icon": "./resources/marketplace/extension.PNG",
   "repository": {
-    "url": ""
+    "url": "https://github.com/mziyabo/vscode-codedeploy-extension"
   },
   "main": "./out/extension.js",
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "postbuild": "copy ./resources/ ./out/ -Recurse -Force",
     "watch": "tsc -watch -p ./",
     "postinstall": "node ./node_modules/vscode/bin/install",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -18,7 +18,11 @@
   "keywords": [
     "CodeDeploy"
   ],
-  "author": "mziyabo@live.com",
+  "author": {
+    "name": "mziyabo",
+    "email": "mziyabo@live.com"
+  },
+  "publisher": "mziyabo",
   "license": "Apache 2.0",
   "preview": true,
   "dependencies": {
@@ -151,7 +155,7 @@
         },
         {
           "command": "cdExplorer.deleteApplication",
-          "when": "config.codedeploy.linkedToCodedeployApplication"
+          "when": "never"
         },
         {
           "command": "cdExplorer.deleteDeploymentGroup",
@@ -159,11 +163,11 @@
         },
         {
           "command": "cdExplorer.configureRevisionLocations",
-          "when": "config.codedeploy.linkedToCodedeployApplication"
+          "when": "never"
         },
         {
           "command": "cdExplorer.deploy",
-          "when": "config.codedeploy.linkedToCodedeployApplication"
+          "when": "never"
         },
         {
           "command": "cdExplorer.viewDeployment",
@@ -201,17 +205,17 @@
         {
           "command": "cdExplorer.createApplication",
           "when": "view == cdExplorer && !config.codedeploy.linkedToCodedeployApplication",
-          "group": "application_mod"
+          "group": "application_manage"
         },
         {
           "command": "cdExplorer.selectApplication",
           "when": "view == cdExplorer && !config.codedeploy.linkedToCodedeployApplication",
-          "group": "application_mod"
+          "group": "application_manage"
         },
         {
           "command": "cdExplorer.unlinkWorkspace",
           "when": "view == cdExplorer && config.codedeploy.linkedToCodedeployApplication",
-          "group": "application_mod"
+          "group": "application_manage"
         },
         {
           "command": "cdExplorer.refresh",
