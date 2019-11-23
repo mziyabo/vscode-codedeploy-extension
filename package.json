@@ -5,7 +5,7 @@
   "description": "vscode CodeDeploy Extension",
   "icon": "resources/marketplace/extension.png",
   "repository": {
-    "url": "https://github.com/mziyabo/vscode-codedeploy-extension"
+    "url": "https://github.com/mziyabo/vscode-codedeploy-extension#mainline"
   },
   "main": "./out/extension.js",
   "scripts": {
