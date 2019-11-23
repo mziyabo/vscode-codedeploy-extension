@@ -1,7 +1,7 @@
 {
   "name": "vscode-codedeploy",
   "displayName": "AWS CodeDeploy vscode Extension",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "vscode CodeDeploy Extension",
   "icon": "./resources/marketplace/extension.PNG",
   "repository": {
