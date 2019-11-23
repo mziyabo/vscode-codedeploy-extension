@@ -1,9 +1,9 @@
 {
   "name": "vscode-codedeploy",
-  "displayName": "AWS CodeDeploy vscode Extension",
+  "displayName": "AWS CodeDeploy vscode",
   "version": "0.1.0",
   "description": "vscode CodeDeploy Extension",
-  "icon": "./resources/marketplace/extension.PNG",
+  "icon": "resources/marketplace/extension.png",
   "repository": {
     "url": "https://github.com/mziyabo/vscode-codedeploy-extension"
   },
@@ -30,10 +30,10 @@
     "@types/vscode": "^1.38.0",
     "adm-zip": "^0.4.13",
     "aws-sdk": "^2.528.0",
-    "vscode": "^1.1.36",
     "vscode-nls": "^4.1.1"
   },
   "devDependencies": {
+    "vscode": "^1.1.36",
     "typescript": "^3.6.3",
     "mocha-junit-reporter": "^1.23.1",
     "mocha-multi-reporters": "^1.1.7",
