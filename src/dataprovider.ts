@@ -2,12 +2,14 @@ import * as vscode from 'vscode';
 import { CDApplication } from "./models/cdmodels";
 import { CDUtil } from './aws/codedeploy/codedeploy';
 import { TreeItemUtil } from './shared/ui/treeItemUtil';
+import { Dialog } from './shared/ui/dialog';
+import { AWSRegions } from './models/region';
 
 export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
-
+    
     private _onDidChangeTreeData: vscode.EventEmitter<CDApplication | undefined> = new vscode.EventEmitter<CDApplication | undefined>();
     readonly onDidChangeTreeData: vscode.Event<CDApplication | undefined> = this._onDidChangeTreeData.event;
-    
+
     private config: vscode.WorkspaceConfiguration;
     public cdUtil: CDUtil;
 
@@ -117,22 +119,30 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
 
     async createApplication() {
         let response = await this.cdUtil.scaffoldApplication();
+        if (response) {
+            this.addTargetsHint(response);
+        }
         this.refresh();
-        // Hint add targets
-        if (response.deploymentGroupName) {
+    }
 
-            let hintResponse = await vscode.window.showInformationMessage(`Add targets for ${response.deploymentGroupName}`, "Add AutoScaling Group", "Add EC2 Tag Filters", "Not Now")
+    async addTargetsHint(response){
+        if (response) {
+            this.refresh();
+            if (response.deploymentGroupName) {
 
-            switch (hintResponse) {
-                case "Add AutoScaling Group":
-                    this.cdUtil.addASG(response.deploymentGroupName);
-                    this.refresh();
-                    break;
+                let hintResponse = await vscode.window.showInformationMessage(`Add targets for ${response.deploymentGroupName}`, "Add AutoScaling Group", "Add EC2 Tag Filters", "Not Now")
 
-                case "Add EC2 Tag Filters":
-                    this.cdUtil.addEC2Tag(response.deploymentGroupName);
-                    this.refresh();
-                    break;
+                switch (hintResponse) {
+                    case "Add AutoScaling Group":
+                        this.cdUtil.addASG(response.deploymentGroupName);
+                        this.refresh();
+                        break;
+
+                    case "Add EC2 Tag Filters":
+                        this.cdUtil.addEC2Tag(response.deploymentGroupName);
+                        this.refresh();
+                        break;
+                }
             }
         }
     }
@@ -164,6 +174,16 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
 
                 case "deploymentGroup":
                     uri = uri + `/applications/${this.config.get("applicationName")}/deployment-groups/${node.label}`;
+                    break;
+
+                case "autoScalingGroups":
+                    uri = `console.aws.amazon.com/ec2/autoscaling/home?region=${this.config.get("region")}#AutoScalingGroups:view=details`;
+                    break;
+
+                default:
+                    if (node.contextValue.includes("autoscaling_")) {
+                        uri = `console.aws.amazon.com/ec2/autoscaling/home?region=${this.config.get("region")}#AutoScalingGroups:id=${node.label};view=details`;
+                    }
                     break;
             }
         }
@@ -199,8 +219,10 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
 
     async deleteApplication(node: vscode.TreeItem) {
         // TODO: prompt/warn user of deletion
-        await this.cdUtil.deleteApplication(node.label);
-        this.unlinkWorkspace();
+        let response = await this.cdUtil.deleteApplication(node.label);
+        if (response) {
+            this.unlinkWorkspace();
+        }
     }
 
     async deleteDeploymentGroup(node: vscode.TreeItem) {
@@ -215,7 +237,7 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
         this.refresh();
     }
 
-    unlinkWorkspace() {
+    async unlinkWorkspace() {
 
         this.config = vscode.workspace.getConfiguration("codedeploy");
 
@@ -231,25 +253,38 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
             await this.config.update(setting, undefined);
         });
 
+        await this.config.update("isApplicationWorkspace", false);
+
         this.refresh();
     }
 
     async removeASG(node: vscode.TreeItem) {
 
-        let autoScalingGroupName = node.label;
-        let deploymentGroupName = node.contextValue.substr(12, node.contextValue.length);
+        let autoScalingGroupName;
+        let deploymentGroupName;
 
-        await this.cdUtil.removeASG(autoScalingGroupName, deploymentGroupName);
+        if (node) {
+            autoScalingGroupName = node.label;
+            deploymentGroupName = node.contextValue.substr(12, node.contextValue.length);
 
-        this.refresh();
+            await this.cdUtil.removeASG(autoScalingGroupName, deploymentGroupName);
+
+            this.refresh();
+        }
     }
 
     async createDeploymentGroup() {
-
         let response = await this.cdUtil.createDeploymentGroup();
-        if (response) {
-            this.refresh();
+        if(response){
+            this.addTargetsHint(response);
         }
+        this.refresh();
+    }
+
+    
+    async stopDeployment(node: vscode.TreeItem) {
+        await this.cdUtil.stopDeployment(node.label);
+        this.refresh();
     }
 
     viewDeployment(node: any) {

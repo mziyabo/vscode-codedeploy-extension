@@ -56,15 +56,18 @@
         "icon": {
           "light": "resources/light/refresh.svg",
           "dark": "resources/dark/refresh.svg"
-        }
+        },
+        "category": "%cdExplorer.command.category%"
       },
       {
         "command": "cdExplorer.openconsole",
-        "title": "%cdExplorer.openConsole.title%"
+        "title": "%cdExplorer.openConsole.title%",
+        "category": "%cdExplorer.command.category%"
       },
       {
         "command": "cdExplorer.createApplication",
-        "title": "%cdExplorer.createApplication.title%"
+        "title": "%cdExplorer.createApplication.title%",
+        "category": "%cdExplorer.command.category%"
       },
       {
         "command": "cdExplorer.selectApplication",
@@ -72,63 +75,77 @@
         "icon": {
           "light": "resources/light/add.svg",
           "dark": "resources/dark/add.svg"
-        }
+        },
+        "category": "%cdExplorer.command.category%"
       },
       {
         "command": "cdExplorer.unlinkWorkspace",
-        "title": "%cdExplorer.unlinkWorkspace.title%"
+        "title": "%cdExplorer.unlinkWorkspace.title%",
+        "category": "%cdExplorer.command.category%"
       },
       {
         "command": "cdExplorer.deploy",
         "title": "%cdExplorer.deployApplication.title%",
-        "icon" :{
-          "light":"resources/light/deploy.svg",
+        "icon": {
+          "light": "resources/light/deploy.svg",
           "dark": "resource/dark/deploy.svg"
-        }
+        },
+        "category": "%cdExplorer.command.category%"
       },
       {
         "command": "cdExplorer.createDeployment",
-        "title": "%cdExplorer.createDeployment.title%"
+        "title": "%cdExplorer.createDeployment.title%",
+        "category": "%cdExplorer.command.category%"
       },
       {
-        "command": "cdExplorer.stop",
-        "title": "%cdExplorer.stopDeployment.title%"
+        "command": "cdExplorer.stopDeployment",
+        "title": "%cdExplorer.stopDeployment.title%",
+        "category": "%cdExplorer.command.category%"
       },
       {
         "command": "cdExplorer.viewDeployment",
-        "title": "%cdExplorer.viewDeployment.title%"
+        "title": "%cdExplorer.viewDeployment.title%",
+        "category": "%cdExplorer.command.category%"
       },
       {
         "command": "cdExplorer.deleteApplication",
-        "title": "%cdExplorer.deleteApplication.title%"
+        "title": "%cdExplorer.deleteApplication.title%",
+        "category": "%cdExplorer.command.category%"
       },
       {
         "command": "cdExplorer.configureRevisionLocations",
-        "title": "%cdExplorer.configureRevisionLocation.title%"
+        "title": "%cdExplorer.configureRevisionLocation.title%",
+        "category": "%cdExplorer.command.category%"
       },
       {
         "command": "cdExplorer.addEC2Tag",
-        "title": "%cdExplorer.addEC2Tag.title%"
+        "title": "%cdExplorer.addEC2Tag.title%",
+        "category": "%cdExplorer.command.category%"
       },
       {
         "command": "cdExplorer.deleteEC2Tag",
-        "title": "%cdExplorer.deleteEC2Tag.title%"
+        "title": "%cdExplorer.deleteEC2Tag.title%",
+        "category": "%cdExplorer.command.category%"
       },
       {
         "command": "cdExplorer.deleteASG",
-        "title": "%cdExplorer.deleteASG.title%"
+        "title": "%cdExplorer.deleteASG.title%",
+        "category": "%cdExplorer.command.category%"
       },
       {
         "command": "cdExplorer.addASG",
-        "title": "%cdExplorer.addASG.title%"
+        "title": "%cdExplorer.addASG.title%",
+        "category": "%cdExplorer.command.category%"
       },
       {
         "command": "cdExplorer.createDeploymentGroup",
-        "title": "%cdExplorer.createDeploymentGroup.title%"
+        "title": "%cdExplorer.createDeploymentGroup.title%",
+        "category": "%cdExplorer.command.category%"
       },
       {
         "command": "cdExplorer.deleteDeploymentGroup",
-        "title": "%cdExplorer.deleteDeploymentGroup.title%"
+        "title": "%cdExplorer.deleteDeploymentGroup.title%",
+        "category": "%cdExplorer.command.category%"
       }
     ],
     "menus": {
@@ -154,7 +171,19 @@
           "when": "!config.codedeploy.isApplicationWorkspace"
         },
         {
+          "command": "cdExplorer.deleteASG",
+          "when": "never"
+        },
+        {
+          "command": "cdExplorer.deleteEC2Tag",
+          "when": "never"
+        },
+        {
           "command": "cdExplorer.deleteApplication",
+          "when": "never"
+        },
+        {
+          "command": "cdExplorer.stopDeployment",
           "when": "never"
         },
         {
@@ -205,12 +234,12 @@
         {
           "command": "cdExplorer.createApplication",
           "when": "view == cdExplorer && !config.codedeploy.isApplicationWorkspace",
-          "group": "application_manage"
+          "group": "application_manage@1"
         },
         {
           "command": "cdExplorer.selectApplication",
           "when": "view == cdExplorer && !config.codedeploy.isApplicationWorkspace",
-          "group": "application_manage"
+          "group": "application_manage@2"
         },
         {
           "command": "cdExplorer.unlinkWorkspace",
@@ -226,7 +255,7 @@
       "view/item/context": [
         {
           "command": "cdExplorer.openconsole",
-          "when": "view == cdExplorer && viewItem =~ /application|deployment|autoScalingGroups/",
+          "when": "view == cdExplorer && viewItem =~ /application|deployment|autoScalingGroups|autoscaling_/",
           "group": "application@1"
         },
         {
@@ -250,6 +279,11 @@
           "group": "deploymentGroup_manage@1"
         },
         {
+          "command": "cdExplorer.stopDeployment",
+          "when": "viewItem == deployment",
+          "group": "deployment_manage@2"
+        },
+        {
           "command": "cdExplorer.deleteASG",
           "when": "view == cdExplorer && viewItem =~ /autoscaling_/",
           "group": "autoscaling_manage@1"
@@ -257,7 +291,7 @@
         {
           "command": "cdExplorer.viewDeployment",
           "when": "view == cdExplorer && viewItem == deployment",
-          "group": "1_view_deployment"
+          "group": "deployment_manage@1"
         },
         {
           "command": "cdExplorer.refresh",
@@ -294,14 +328,16 @@
             "type": "string",
             "description": "%codedeploy.region.description%"
           },
+          "codedeploy.isApplicationWorkspace": {
+            "type": "boolean",
+            "description": "%codedeploy.isApplicationWorkspace.description%",
+            "readOnly": true,
+            "default": false
+          },
           "codedeploy.applicationName": {
             "type": "string",
-            "description": "Default AWS CodeDeploy application name for workspace",
+            "description": "AWS CodeDeploy Application for Workspace",
             "title": "%codedeploy.applicationName.title%"
-          },
-          "codedeploy.deploymentGroupName": {
-            "type": "string",
-            "description": "%codedeploy.deploymentGroupName.description%"
           },
           "codedeploy.revisionBucket": {
             "type": "string",
@@ -311,15 +347,9 @@
             "type": "string",
             "description": "%codedeploy.revisionLocalDirectory.description%"
           },
-          "codedeploy.isApplicationWorkspace": {
+          "codedeploy.enableAwsLogging": {
             "type": "boolean",
-            "description": "%codedeploy.isApplicationWorkspace.description%",
-            "readOnly": true,
-            "default": false
-          },
-          "codedeploy.enableAwsLogging":{
-            "type": "boolean",
-            "description": "%codedeploy.codedeploy.enableAwsLogging.description%",
+            "description": "%codedeploy.enableAwsLogging.description%",
             "default": false
           }
         }

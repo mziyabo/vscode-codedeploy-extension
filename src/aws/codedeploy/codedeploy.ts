@@ -9,6 +9,7 @@ import { IAMUtil } from '../iam/iam';
 import { autoscalingUtil } from '../autoscaling/autoscaling';
 import { AWSRegions } from '../../models/region';
 import { CDApplication, CDDeploymentGroup, CDDeployment } from "../../models/cdmodels";
+import { create } from 'domain';
 
 export class CDUtil {
 
@@ -18,8 +19,8 @@ export class CDUtil {
     constructor() {
         this.config = vscode.workspace.getConfiguration("codedeploy");
         if (this.config.get("enableAwsLogging")) {
-          AWS.config.logger = console;
-        }    
+            AWS.config.logger = console;
+        }
     }
 
     /**
@@ -76,11 +77,13 @@ export class CDUtil {
 
         await this.config.update("region", _region.label);
 
+        let applications = await this.getApplicationsAsQuickPickItems();
+
         dialog.addPrompt("_applicationName", async () => {
-            return await vscode.window.showQuickPick(this.getApplicationsAsQuickPickItems(), {
+            return await vscode.window.showQuickPick(applications, {
                 canPickMany: false,
-                placeHolder: "Select AWS CodeDeploy Application",
-                ignoreFocusOut: true
+                placeHolder: applications.length > 0 ? "Select AWS CodeDeploy Application" : `No CodeDeploy Applications Found in ${this.config.get("region")}`,
+                ignoreFocusOut: true,
             });
         })
 
@@ -96,15 +99,19 @@ export class CDUtil {
      */
     async scaffoldApplication() {
 
-
         let createAppResponse = await this.createApplication();
+
         if (createAppResponse) {
+
             let createDeploymentGroupResponse = await this.createDeploymentGroup();
             // TODO: prompt to add deployment targets ec2TargetFilter/AutoScalingGroup
-            return {
-                applicationName: this.config.get("applicationName"),
-                deploymentGroupName: createDeploymentGroupResponse.deploymentGroupName
+            if (createDeploymentGroupResponse) {
+                return {
+                    applicationName: this.config.get("applicationName"),
+                    deploymentGroupName: createDeploymentGroupResponse.deploymentGroupName
+                }
             }
+
         }
     }
 
@@ -141,7 +148,7 @@ export class CDUtil {
                 {
                     cancellable: false,
                     title: `Creating CodeDeploy Application: \'${dialog.getResponse("_applicationName")}\'`,
-                    location: vscode.ProgressLocation.Window
+                    location: vscode.ProgressLocation.Notification
                 }, async (progress, token) => {
 
                     let response = await this.codedeploy.createApplication(applicationParams).promise();
@@ -164,7 +171,8 @@ export class CDUtil {
 
         dialog.addPrompt("_deploymentGroupName", async () => {
             return await vscode.window.showInputBox({
-                prompt: "Enter Deployment Group Name:",
+                prompt: "Enter Deployment Group Name",
+                placeHolder: `e.g. ${this.config.get("applicationName")}-Dev`,
                 ignoreFocusOut: true
             });
         });
@@ -191,7 +199,7 @@ export class CDUtil {
             return vscode.window.withProgress({
                 cancellable: false,
                 title: `Creating Deployment Group: \'${dialog.getResponse("_deploymentGroupName")}\'`,
-                location: vscode.ProgressLocation.Window
+                location: vscode.ProgressLocation.Notification
             }, async (progress, token) => {
                 let response = await this.codedeploy.createDeploymentGroup(params).promise();
                 return {
@@ -272,22 +280,26 @@ export class CDUtil {
                 }
             }
 
-            await vscode.window.withProgress({
+            let createResponse = await vscode.window.withProgress({
                 cancellable: false,
                 title: "Creating CodeDeploy Application",
-                location: vscode.ProgressLocation.Window
+                location: vscode.ProgressLocation.Notification
             }, async (progress, token) => {
 
                 let response = await this.codedeploy.createDeployment(params).promise();
                 console.log(`Deployment Started ${response.deploymentId}`);
+                return response;
+            });
 
-                let openResponse = await vscode.window.showInformationMessage(`Open Deployment ${response.deploymentId} in AWS Console to track progress?`, "Yes", "No");
+            if (createResponse) {
+
+                let openResponse = await vscode.window.showInformationMessage(`Open Deployment ${createResponse.deploymentId} in AWS Console to track progress?`, "Yes", "No");
 
                 if (openResponse == "Yes") {
-                    let uri = `${this.config.get("region")}.console.aws.amazon.com/codesuite/codedeploy/deployments/${response.deploymentId}`
+                    let uri = `${this.config.get("region")}.console.aws.amazon.com/codesuite/codedeploy/deployments/${createResponse.deploymentId}`
                     vscode.commands.executeCommand('vscode.open', vscode.Uri.parse("https://" + uri));
                 }
-            });
+            }
         }
 
     }
@@ -366,11 +378,11 @@ export class CDUtil {
                 for (let index = 0; index < _deployments.length; index++) {
                     const deployment = _deployments[index];
 
-                    deployment.tooltip = `${deployment.Data.status} - ${deployment.Data.completeTime}`;
+                    deployment.tooltip = `${deployment.Data.status}`;
 
                     if (deployment.Data.status == "Failed") {
 
-                        deployment.tooltip += `- ${deployment.Data.errorInformation.message}`;
+                        deployment.tooltip += `- ${deployment.Data.completeTime} - ${deployment.Data.errorInformation.message}`;
                         deployment.description = `- ${deployment.Data.errorInformation.message}`;
 
                         deployment.iconPath = {
@@ -380,15 +392,30 @@ export class CDUtil {
                         };
                     }
                     else if (deployment.Data.status == "Succeeded") {
+
+                        deployment.tooltip += `- ${deployment.Data.completeTime}`;
+
                         deployment.iconPath = {
                             light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/check.svg")),
                             dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/check.svg"))
                         };
                     }
+                    else if (deployment.Data.status == "Stopped") {
+                        deployment.iconPath = {
+                            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/stopped.svg")),
+                            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/stopped.svg"))
+                        };
+                    }
                     else if (deployment.Data.status == "InProgress") {
                         deployment.iconPath = {
-                            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/progress.svg")),
-                            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/progress.svg"))
+                            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", `resources/light/progress.svg`)),
+                            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", `resources/dark/progress.svg`))
+                        };
+                    }
+                    else {
+                        deployment.iconPath = {
+                            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", `resources/light/progress.svg`)),
+                            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", `resources/dark/progress.svg`))
                         };
                     }
 
@@ -465,46 +492,54 @@ export class CDUtil {
 
     async deleteApplication(applicationName: string) {
 
-        this.initClient();
+        let confirmDelete = await vscode.window.showInformationMessage(`Are you sure you want to delete ${applicationName}?`, { modal: true }, "Delete");
+        if (confirmDelete == "Delete") {
 
-        let params = {
-            applicationName: applicationName
-        };
+            this.initClient();
 
-        await vscode.window.withProgress(
-            {
-                cancellable: false,
-                location: vscode.ProgressLocation.Window,
-                title: `Deleting Application ${applicationName}`
-            },
-            async (progress, token) => {
-                let response = await this.codedeploy.deleteApplication(params).promise();
-            }
-        )
+            let params = {
+                applicationName: applicationName
+            };
+
+            return await vscode.window.withProgress(
+                {
+                    cancellable: false,
+                    location: vscode.ProgressLocation.Notification,
+                    title: `Deleting Application ${applicationName}`
+                },
+                async (progress, token) => {
+                    let response = await this.codedeploy.deleteApplication(params).promise();
+                    return response;
+                }
+            )
+        }
     }
 
     async deleteDeploymentGroup(deploymentGroupName: string) {
 
-        this.initClient();
+        let confirmDelete = await vscode.window.showInformationMessage(`Are you sure you want to delete ${deploymentGroupName}?`, { modal: true }, "Delete");
+        if (confirmDelete == "Delete") {
 
-        let params = {
-            applicationName: this.config.get("applicationName"),
-            deploymentGroupName: deploymentGroupName
-        }
+            this.initClient();
 
-        await vscode.window.withProgress(
-            {
-                cancellable: false,
-                location: vscode.ProgressLocation.Window,
-                title: `Deleting Deployment Group ${deploymentGroupName}`
-            },
-            async (progress, token) => {
-                let response = await this.codedeploy.deleteDeploymentGroup(params).promise();
+            let params = {
+                applicationName: this.config.get("applicationName"),
+                deploymentGroupName: deploymentGroupName
             }
-        )
 
+            await vscode.window.withProgress(
+                {
+                    cancellable: false,
+                    location: vscode.ProgressLocation.Notification,
+                    title: `Deleting Deployment Group ${deploymentGroupName}`
+                },
+                async (progress, token) => {
+                    let response = await this.codedeploy.deleteDeploymentGroup(params).promise();
+                }
+            )
+
+        }
     }
-
     async getDeploymentTargetTreeItems(deploymentId: string): Promise<vscode.TreeItem[]> {
 
         this.initClient();
@@ -538,6 +573,8 @@ export class CDUtil {
 
                     switch (target.instanceTarget.status) {
                         case "Failed":
+
+                            treeitem.contextValue = "instanceTarget_failed";
                             treeitem.iconPath = {
                                 light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/errorTarget.svg")),
                                 dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/errorTarget.svg"))
@@ -545,9 +582,12 @@ export class CDUtil {
 
                             for (let index = 0; index < target.instanceTarget.lifecycleEvents.length; index++) {
                                 const _event = target.instanceTarget.lifecycleEvents[index];
-
                                 if (_event.status == "Failed") {
                                     treeitem.tooltip = `${_event.lifecycleEventName} ${_event.status} - ${_event.diagnostics.errorCode}: ${_event.diagnostics.message}`;
+                                    break;
+                                }
+                                else if (_event.status == "Skipped") {
+                                    treeitem.tooltip = `${_event.status} lifecycle events - ${_event.endTime}`;
                                     break;
                                 }
                             }
@@ -568,6 +608,10 @@ export class CDUtil {
                             break;
 
                         default:
+                            treeitem.iconPath = {
+                                light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/unknownTarget.svg")),
+                                dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/unknownTarget.svg"))
+                            };
                             break;
                     }
 
@@ -668,9 +712,17 @@ export class CDUtil {
                 currentDeploymentGroupName: deploymentGroupName
             }
 
-            let response = await this.codedeploy.updateDeploymentGroup(params).promise();
-            console.log(`EC2 Tag Filter added`);
-            return response;
+            return await vscode.window.withProgress(
+                {
+                    cancellable: false,
+                    location: vscode.ProgressLocation.Notification,
+                    title: `Adding EC2 Tag Filter ${tag.Key} to ${deploymentGroupName}`
+                }, async (progress, token) => {
+
+                    let response = await this.codedeploy.updateDeploymentGroup(params).promise();
+                    console.log(`EC2 Tag Filter ${tag.Key} added to ${deploymentGroupName}`);
+                    return response;
+                });
         }
     }
 
@@ -760,7 +812,7 @@ export class CDUtil {
             {
                 cancellable: false,
                 title: `Deleting ${deploymentGroupName} EC2 Tag Filter ${ec2TagKey}`,
-                location: vscode.ProgressLocation.Window
+                location: vscode.ProgressLocation.Notification
             }, async (progress, token) => {
 
                 return updateResponse = await this.codedeploy.updateDeploymentGroup(params).promise();
@@ -799,7 +851,7 @@ export class CDUtil {
                 {
                     cancellable: false,
                     title: `Removing  Deployment Group: \'${deploymentGroupName}\' ASG ${autoscalingGroupName}`,
-                    location: vscode.ProgressLocation.Window
+                    location: vscode.ProgressLocation.Notification
                 }, async (progress, token) => {
                     return updateResponse = await this.codedeploy.updateDeploymentGroup(params).promise();
                 }
@@ -818,14 +870,14 @@ export class CDUtil {
     async addASG(deploymentGroupName: string) {
 
         let asgUtil = new autoscalingUtil();
-
-        let asgs = await vscode.window.showQuickPick(await asgUtil.getAsgsAsQuickPickItems(), {
-            placeHolder: "Select AutoScaling Group(s):",
+        let asgQuickPickItems = await asgUtil.getAsgsAsQuickPickItems();
+        let asgs = await vscode.window.showQuickPick(asgQuickPickItems, {
+            placeHolder: asgQuickPickItems.length > 0 ? "Select AutoScaling Groups:" : `No AutoScaling Groups found in ${this.config.get("region")}`,
             canPickMany: true,
             ignoreFocusOut: true
         })
 
-        if (asgs) {
+        if (asgs.length > 0) {
 
             let autoScalingGroups = [];
             asgs.forEach(item => {
@@ -844,7 +896,7 @@ export class CDUtil {
 
             return vscode.window.withProgress({
                 cancellable: false,
-                location: vscode.ProgressLocation.Window,
+                location: vscode.ProgressLocation.Notification,
                 title: `Adding ASG(s) to Deployment Group ${deploymentGroupName}`
             },
                 async (progress, token) => {
@@ -893,5 +945,29 @@ export class CDUtil {
         });
 
         return asgs;
+    }
+
+
+    async stopDeployment(deploymentId: string) {
+
+        this.initClient();
+
+        let params = {
+            deploymentId: deploymentId
+        };
+
+        await vscode.window.withProgress({
+            cancellable: false,
+            location: vscode.ProgressLocation.Window,
+            title: `Stopping dpeloyment ${deploymentId}`
+        }, async (progress, token) => {
+
+            let response = await this.codedeploy.stopDeployment(params).promise();
+            if (response.Status == "Succeeded") {
+                console.log(`Stopped Deployment ${deploymentId}`);
+            }
+
+            return response;
+        })
     }
 }

@@ -22,11 +22,13 @@ To get setup with the extension perform the following tasks:
 2. Click either `Create Application` or `Add Exisitng Application` to link application with workspace.
 3. Follow the on-screen prompts to add Application and Deployment Group.
 
-Click `Add AutoScaling Group` or `Add EC2 Tag Filter` to associate application with EC2 Targets
+Click `Add AutoScaling Group` or `Add EC2 Tag Filter` in the notification window to associate the application with EC2 Targets
 
 ![Add Targets](./resources/marketplace/addtargets.PNG)
 
 4. Right click a deployment group and choose `Deploy Application` to create deployment to targets from the vscode workspace.
+
+ > Note to remove the workspace link to the CodeDeploy application run `AWS CodeDeploy: Unlink Workspace` from the Command Palette or the CodeDeploy Explorer.
 
 ## Extension Limitations
 - Limited to CodeDeploy to EC2, i.e. Support for Lambda and ECS not yet available
