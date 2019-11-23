@@ -6,7 +6,7 @@ vscode [AWS CodeDeploy](https://docs.aws.amazon.com/codedeploy/latest/userguide/
 ## Features
 - Link AWS CodeDeploy Application to vscode workspace and view/manage application.
 
-![view](./resources/marketplace/explorer.PNG)
+![view](resources/marketplace/explorer.PNG)
 
 - Create CodeDeploy Application and/ Deployment Groups.
 - Deploy to CodeDeploy from a vscode working folder or project using S3 revision locations.
@@ -24,7 +24,7 @@ To get setup with the extension perform the following tasks:
 
 Click `Add AutoScaling Group` or `Add EC2 Tag Filter` in the notification window to associate the application with EC2 Targets
 
-![Add Targets](./resources/marketplace/addtargets.PNG)
+![Add Targets](resources/marketplace/addtargets.PNG)
 
 4. Right click a deployment group and choose `Deploy Application` to create deployment to targets from the vscode workspace.
 
