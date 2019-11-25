@@ -175,6 +175,10 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
                 case "deploymentGroup":
                     uri = uri + `/applications/${this.config.get("applicationName")}/deployment-groups/${node.label}`;
                     break;
+                
+                case "deploymentGroups":
+                        uri = uri + `/applications/${this.config.get("applicationName")}/deploymentGroups`;
+                    break;
 
                 case "autoScalingGroups":
                     uri = `console.aws.amazon.com/ec2/autoscaling/home?region=${this.config.get("region")}#AutoScalingGroups:view=details`;
