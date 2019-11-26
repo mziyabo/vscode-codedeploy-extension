@@ -1,8 +1,8 @@
 {
   "name": "vscode-codedeploy",
-  "displayName": "AWS CodeDeploy vscode",
+  "displayName": "AWS CodeDeploy",
   "version": "0.4.0",
-  "description": "vscode CodeDeploy Extension",
+  "description": "Deploy/manage AWS CodeDeploy applications in vscode",
   "icon": "resources/marketplace/extension.png",
   "repository": {
     "url": "https://github.com/mziyabo/vscode-codedeploy-extension"
@@ -16,6 +16,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
+    "AWS",
     "CodeDeploy"
   ],
   "author": {
@@ -152,7 +153,7 @@
       "commandPalette": [
         {
           "command": "cdExplorer.selectApplication",
-          "when": "never"
+          "when": "!config.codedeploy.isApplicationWorkspace"
         },
         {
           "command": "cdExplorer.openconsole",
@@ -169,6 +170,10 @@
         {
           "command": "cdExplorer.createApplication",
           "when": "!config.codedeploy.isApplicationWorkspace"
+        },
+        {
+          "command": "cdExplorer.createDeploymentGroup",
+          "when": "config.codedeploy.isApplicationWorkspace"
         },
         {
           "command": "cdExplorer.deleteASG",
@@ -213,6 +218,10 @@
         {
           "command": "cdExplorer.createDeployment",
           "when": "never"
+        },
+        {
+          "command": "cdExplorer.unlinkWorkspace",
+          "when": "config.codedeploy.isApplicationWorkspace"
         }
       ],
       "view/title": [

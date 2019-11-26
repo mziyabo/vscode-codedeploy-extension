@@ -28,6 +28,9 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
 
     async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
 
+        if(!vscode.workspace.workspaceFolders)
+            return;
+
         this.config = vscode.workspace.getConfiguration("codedeploy");
 
         if (!this.config.get("applicationName")) {
@@ -113,16 +116,46 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
     }
 
     async selectApplication() {
-        await this.cdUtil.addExistingApplication();
-        this.refresh();
+        
+        if (vscode.workspace.workspaceFolders){
+            await this.cdUtil.addExistingApplication();
+
+            this.refresh();
+        }
+        else{
+            let openWorkspaceResponse = await vscode.window.showInformationMessage("Active workspace required to link with CodeDeploy.\n Would you like to open a workspace", "Open Workspace","Later");
+            
+            if (openWorkspaceResponse == "Open Workspace") {
+                let success = await vscode.commands.executeCommand('vscode.openFolder');
+                if(success){
+                    this.selectApplication();
+                }
+            }
+        }
+
     }
 
     async createApplication() {
-        let response = await this.cdUtil.scaffoldApplication();
-        if (response) {
-            this.addTargetsHint(response);
+   
+        if (vscode.workspace.workspaceFolders){
+            
+            let response = await this.cdUtil.scaffoldApplication();
+            if (response) {
+                this.addTargetsHint(response);
+            }
+            
+            this.refresh();
         }
-        this.refresh();
+        else{
+            let openWorkspaceResponse = await vscode.window.showInformationMessage("Active workspace required to link with CodeDeploy.\n Would you like to open a workspace", "Open Workspace","Later");
+            
+            if (openWorkspaceResponse == "Open Workspace") {
+                let success = await vscode.commands.executeCommand('vscode.openFolder');
+                if(success){
+                    this.createApplication();
+                }
+            }
+        }
     }
 
     async addTargetsHint(response){
