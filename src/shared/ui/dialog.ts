@@ -12,13 +12,11 @@ export class Dialog {
     }
 
     addPrompt(name: string, promptFunction: () => any) {
-
         let prompt: Prompt = new Prompt(name, promptFunction);
         this.prompts.push(prompt);
     }
 
     async run() {
-
         this.cancelled = false;
         for (let i: number = 0; i < this.prompts.length; i++) {
             let response = await this.prompts[i].fire();
@@ -36,7 +34,6 @@ export class Dialog {
     }
 
     getResponse(name: string) {
-
         let p = this.responses.find((prompt) => { return prompt.name == name });
         if (p.response.hasOwnProperty("label")) {
             // TODO: allow the entire QuickPickItem e.g. for ServiceRolesArns
@@ -48,7 +45,6 @@ export class Dialog {
 }
 
 class Prompt {
-
     promptFunction: Function;
     response: any;
     name: string;

@@ -6,12 +6,12 @@ import { TreeItemUtil } from '../../shared/ui/treeItemUtil';
 import { QuickPickItem } from '../../shared/ui/quickpickitem';
 import { S3Util } from "../s3/s3";
 import { IAMUtil } from '../iam/iam';
-import { autoscalingUtil } from '../autoscaling/autoscaling';
+import { AutoScalingUtil } from '../autoscaling/autoscaling';
 import { AWSRegions } from '../../models/region';
 import { CDApplication, CDDeploymentGroup, CDDeployment } from "../../models/cdmodels";
 import { TreeItemIcons } from '../../shared/ui/icons';
 
-export class CDUtil {
+export class CodeDeployUtil {
 
     private codedeploy;
     private config: vscode.WorkspaceConfiguration;
@@ -561,10 +561,7 @@ export class CDUtil {
                         case "Failed":
 
                             treeitem.contextValue = "instanceTarget_failed";
-                            treeitem.iconPath = {
-                                light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/errorTarget.svg")),
-                                dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/errorTarget.svg"))
-                            };
+                            treeitem.iconPath = TreeItemIcons.Target.Failed
 
                             for (let index = 0; index < target.instanceTarget.lifecycleEvents.length; index++) {
                                 const _event = target.instanceTarget.lifecycleEvents[index];
@@ -580,15 +577,15 @@ export class CDUtil {
                             break;
 
                         case "Succeeded":
-                            treeitem.iconPath = TreeItemIcons.Deployment.Succeeded;
+                            treeitem.iconPath = TreeItemIcons.Target.Succeeded;
                             break;
 
                         case "InProgress":
-                            treeitem.iconPath = TreeItemIcons.Deployment.InProgress;
+                            treeitem.iconPath = TreeItemIcons.Target.InProgress;
                             break;
 
                         default:
-                            treeitem.iconPath = TreeItemIcons.Deployment.Default;
+                            treeitem.iconPath = TreeItemIcons.Target.Unknown;
                             break;
                     }
 
@@ -840,7 +837,7 @@ export class CDUtil {
      */
     async addASG(deploymentGroupName: string) {
 
-        let asgUtil = new autoscalingUtil();
+        let asgUtil = new AutoScalingUtil();
         let asgQuickPickItems = await asgUtil.getAsgsAsQuickPickItems();
         let asgs = await vscode.window.showQuickPick(asgQuickPickItems, {
             placeHolder: asgQuickPickItems.length > 0 ? "Select AutoScaling Groups:" : `No AutoScaling Groups found in ${this.config.get("region")}`,
@@ -918,7 +915,6 @@ export class CDUtil {
         return asgs;
     }
 
-
     async stopDeployment(deploymentId: string) {
 
         this.initClient();
@@ -940,5 +936,27 @@ export class CDUtil {
 
             return response;
         })
+    }
+
+    /**
+    * Retrieve TreeItems for Application contextValues
+    */
+    getApplicationTreeItems() {
+
+        let treeItems: vscode.TreeItem[] = [];
+
+        let labels = [
+            {
+                "label": "Deployment Groups",
+                "contextValue": "deploymentGroups"
+            }
+        ];
+
+        labels.forEach(element => {
+            let treeItem = TreeItemUtil.addCollapsedItem(element.label, element.contextValue);
+            treeItems.push(treeItem);
+        });
+
+        return treeItems;
     }
 }

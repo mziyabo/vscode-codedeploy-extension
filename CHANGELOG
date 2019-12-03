@@ -1,0 +1,7 @@
+
+0.6.0 (Upcoming)
+- Refactored Folders
+- Added TreeItemIcon object
+
+0.5.0 (Latest)
+- Fixed Workspace Configuration exceptions when extension is activated outside workspace

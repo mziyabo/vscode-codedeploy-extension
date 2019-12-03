@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import * as path from "path";
+import { TreeItemIcons } from "./icons";
 
 export class TreeItemUtil {
 
@@ -9,11 +9,9 @@ export class TreeItemUtil {
 
         treeItem.contextValue = contextValue;
         if (includeIcon) {
-            treeItem.iconPath = {
-                light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/constant.svg")),
-                dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/constant.svg"))
-            };
+            treeItem.iconPath = TreeItemIcons.Property;
         }
+
         return treeItem;
     }
 
@@ -23,7 +21,7 @@ export class TreeItemUtil {
 
         treeItem.contextValue = contextValue;
         treeItem.iconPath = iconfsPath;
-        
+
         return treeItem;
     }
 

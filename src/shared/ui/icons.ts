@@ -1,11 +1,24 @@
-import * as vscode from 'vscode';
 import * as path from 'path';
+import * as vscode from 'vscode';
 
 export let TreeItemIcons =
 {
     "Target": {
-        "Running": {
-
+        "Succeeded": {
+            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/succeededTarget.svg")),
+            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/succeededTarget.svg"))
+        },
+        "Failed": {
+            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/errorTarget.svg")),
+            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/errorTarget.svg"))
+        },
+        "InProgress": {
+            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/pendingTarget.svg")),
+            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/pendingTarget.svg"))
+        },
+        "Unknown": {
+            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/unknownTarget.svg")),
+            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/unknownTarget.svg"))
         }
     },
     "Deployment": {
@@ -35,8 +48,13 @@ export let TreeItemIcons =
         dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/tag.svg")),
     },
     "Application": {
-        light: vscode.Uri.file(path.join(__dirname, "..", "..", "/resources/light/codedeploy.svg")),
-        dark: vscode.Uri.file(path.join(__dirname, "..", "..", "/resources/dark/codedeploy.svg")),
+        light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/codedeploy.svg")),
+        dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/codedeploy.svg")),
+    },
+    "Property":
+    {
+        light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/constant.svg")),
+        dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/constant.svg"))
     }
 }
 
