@@ -1,5 +1,5 @@
-import * as path from 'path';
 import * as vscode from 'vscode';
+import { TreeItemIcons } from '../shared/ui/icons';
 
 export class CDApplication extends vscode.TreeItem {
 
@@ -8,10 +8,7 @@ export class CDApplication extends vscode.TreeItem {
     public Data;
 
     contextValue = 'application';
-    iconPath = {
-        light: vscode.Uri.file(path.join(__dirname, "..", "..", "/resources/light/codedeploy.svg")),
-        dark: vscode.Uri.file(path.join(__dirname, "..", "..", "/resources/dark/codedeploy.svg")),
-    };
+    iconPath = TreeItemIcons.Application;
 
     constructor(
         _label: string = "CodeDeploy Application",

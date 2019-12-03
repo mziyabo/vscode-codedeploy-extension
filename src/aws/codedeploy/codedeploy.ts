@@ -9,7 +9,7 @@ import { IAMUtil } from '../iam/iam';
 import { autoscalingUtil } from '../autoscaling/autoscaling';
 import { AWSRegions } from '../../models/region';
 import { CDApplication, CDDeploymentGroup, CDDeployment } from "../../models/cdmodels";
-import { create } from 'domain';
+import { TreeItemIcons } from '../../shared/ui/icons';
 
 export class CDUtil {
 
@@ -380,43 +380,29 @@ export class CDUtil {
 
                     deployment.tooltip = `${deployment.Data.status}`;
 
-                    if (deployment.Data.status == "Failed") {
+                    switch (deployment.Data.status) {
+                        case "Failed":
+                            deployment.tooltip += `- ${deployment.Data.completeTime} - ${deployment.Data.errorInformation.message}`;
+                            deployment.description = `- ${deployment.Data.errorInformation.message}`;
+                            deployment.iconPath = TreeItemIcons.Deployment.Failed;
+                            break;
 
-                        deployment.tooltip += `- ${deployment.Data.completeTime} - ${deployment.Data.errorInformation.message}`;
-                        deployment.description = `- ${deployment.Data.errorInformation.message}`;
+                        case "Succeeded":
+                            deployment.tooltip += `- ${deployment.Data.completeTime}`;
+                            deployment.iconPath = TreeItemIcons.Deployment.Succeeded;
+                            break;
 
-                        deployment.iconPath = {
-                            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/error.svg")),
-                            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/error.svg"))
+                        case "Stopped":
+                            deployment.iconPath = TreeItemIcons.Deployment.Stopped;
+                            break;
 
-                        };
-                    }
-                    else if (deployment.Data.status == "Succeeded") {
+                        case "InProgress":
+                            deployment.iconPath = TreeItemIcons.Deployment.InProgress;
+                            break;
 
-                        deployment.tooltip += `- ${deployment.Data.completeTime}`;
-
-                        deployment.iconPath = {
-                            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/check.svg")),
-                            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/check.svg"))
-                        };
-                    }
-                    else if (deployment.Data.status == "Stopped") {
-                        deployment.iconPath = {
-                            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/stopped.svg")),
-                            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/stopped.svg"))
-                        };
-                    }
-                    else if (deployment.Data.status == "InProgress") {
-                        deployment.iconPath = {
-                            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", `resources/light/progress.svg`)),
-                            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", `resources/dark/progress.svg`))
-                        };
-                    }
-                    else {
-                        deployment.iconPath = {
-                            light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", `resources/light/progress.svg`)),
-                            dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", `resources/dark/progress.svg`))
-                        };
+                        default:
+                            deployment.iconPath = TreeItemIcons.Deployment.InProgress;
+                            break;
                     }
 
                     deploymentDetails.push(deployment);
@@ -594,24 +580,15 @@ export class CDUtil {
                             break;
 
                         case "Succeeded":
-                            treeitem.iconPath = {
-                                light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/succeededTarget.svg")),
-                                dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/succeededTarget.svg"))
-                            };
+                            treeitem.iconPath = TreeItemIcons.Deployment.Succeeded;
                             break;
 
                         case "InProgress":
-                            treeitem.iconPath = {
-                                light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/pendingTarget.svg")),
-                                dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/pendingTarget.svg"))
-                            };
+                            treeitem.iconPath = TreeItemIcons.Deployment.InProgress;
                             break;
 
                         default:
-                            treeitem.iconPath = {
-                                light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/unknownTarget.svg")),
-                                dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/unknownTarget.svg"))
-                            };
+                            treeitem.iconPath = TreeItemIcons.Deployment.Default;
                             break;
                     }
 
@@ -737,10 +714,7 @@ export class CDUtil {
             dg.Data.ec2TagFilters.forEach(ec2Tag => {
                 let treeItem = new vscode.TreeItem(`${ec2Tag.Key}=${ec2Tag.Value}`, vscode.TreeItemCollapsibleState.None);
 
-                treeItem.iconPath = {
-                    light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/tag.svg")),
-                    dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/tag.svg")),
-                }
+                treeItem.iconPath = TreeItemIcons.EC2Tag;
 
                 treeItem.contextValue = `ec2TagFilter_${deploymentGroupName}`;
                 treeItem.id = `${deploymentGroupName}_${ec2Tag.Key}`;
@@ -756,10 +730,7 @@ export class CDUtil {
 
                     let treeItem = new vscode.TreeItem(`${ec2Tag.Key}=${ec2Tag.Value}`, vscode.TreeItemCollapsibleState.None);
 
-                    treeItem.iconPath = {
-                        light: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/light/tag.svg")),
-                        dark: vscode.Uri.file(path.join(__dirname, "..", "..", "..", "resources/dark/tag.svg")),
-                    }
+                    treeItem.iconPath = TreeItemIcons.EC2Tag;
 
                     treeItem.contextValue = `ec2TagFilter_${deploymentGroupName}`;
                     treeItem.id = `${deploymentGroupName}_${ec2Tag.Key}`;
