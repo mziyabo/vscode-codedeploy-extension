@@ -1,19 +1,19 @@
 {
   "name": "vscode-codedeploy",
   "displayName": "AWS CodeDeploy",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Deploy/manage AWS CodeDeploy applications in vscode",
   "icon": "resources/marketplace/extension.png",
   "repository": {
     "url": "https://github.com/mziyabo/vscode-codedeploy-extension"
   },
-  "main": "./out/extension.js",
+  "main": "./dist/extension.js",
   "scripts": {
-    "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "postinstall": "node ./node_modules/vscode/bin/install",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "vscode:prepublish": "webpack --mode production",
+    "webpack": "webpack --mode development",
+    "webpack-dev": "webpack --mode development --watch"
   },
   "keywords": [
     "AWS",
@@ -31,15 +31,21 @@
     "@types/vscode": "^1.38.0",
     "adm-zip": "^0.4.13",
     "aws-sdk": "^2.528.0",
-    "vscode-nls": "^4.1.1"
+    "vscode-nls": "^4.1.0"
   },
   "devDependencies": {
-    "vscode": "^1.1.36",
-    "typescript": "^3.6.3",
+    "del": "^2.2.1",
+    "gulp": "^4.0.2",
+    "gulp-typescript": "^6.0.0-alpha.1",
+    "mocha": "^6.2.2",
     "mocha-junit-reporter": "^1.23.1",
     "mocha-multi-reporters": "^1.1.7",
-    "mocha": "^6.2.2",
-    "vscode-nls-dev": "^3.3.1"
+    "ts-loader": "^6.2.1",
+    "typescript": "^3.6.3",
+    "vscode": "^1.1.36",
+    "vscode-nls-dev": "^3.3.1",
+    "webpack": "^4.41.2",
+    "webpack-cli": "^3.3.10"
   },
   "contributes": {
     "views": {

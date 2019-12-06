@@ -1,5 +1,12 @@
+**/*.ts
 .vscode
 .gitignore
-tsconfig.json
-test/**
+.travis.yml
+.vscodeignore
+gulpfile.js
 out/test/**
+out/
+src/
+node_modules
+tsconfig.json
+webpack.config.js

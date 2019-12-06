@@ -83,52 +83,6 @@ export class ExtCommand {
         this.dataProvider.refresh();
     }
 
-    openConsole(node: any): any {
-
-        let uri: string;
-
-        if (this.config.get("isApplicationWorkspace") && node != undefined) {
-            uri = `${this.config.get("region")}.console.aws.amazon.com/codesuite/codedeploy`;
-
-            switch (node.contextValue) {
-                case "application":
-                    uri = uri + `/applications/${node.label}`;
-                    break;
-
-                case "deployment":
-                    uri = uri + `/deployments/${node.label}`;
-                    break;
-
-                case "deployments":
-                    uri = uri + `/deployments/`;
-                    break;
-
-                case "deploymentGroup":
-                    uri = uri + `/applications/${this.config.get("applicationName")}/deployment-groups/${node.label}`;
-                    break;
-
-                case "deploymentGroups":
-                    uri = uri + `/applications/${this.config.get("applicationName")}/deploymentGroups`;
-                    break;
-
-                case "autoScalingGroups":
-                    uri = `console.aws.amazon.com/ec2/autoscaling/home?region=${this.config.get("region")}#AutoScalingGroups:view=details`;
-                    break;
-
-                default:
-                    if (node.contextValue.includes("autoscaling_")) {
-                        uri = `console.aws.amazon.com/ec2/autoscaling/home?region=${this.config.get("region")}#AutoScalingGroups:id=${node.label};view=details`;
-                    }
-                    break;
-            }
-        }
-        else {
-            uri = `console.aws.amazon.com/codesuite/codedeploy/start?`;
-        }
-
-        vscode.commands.executeCommand('vscode.open', vscode.Uri.parse("https://" + uri));
-    }
-
     configureRevisionLocations(): any {
         this.cdUtil.configureRevisionLocations();
     }
@@ -219,6 +173,52 @@ export class ExtCommand {
     async stopDeployment(node: vscode.TreeItem) {
         await this.cdUtil.stopDeployment(node.label);
         this.dataProvider.refresh();
+    }
+
+    openConsole(node: any) {
+
+        let uri: string;
+
+        if (this.config.get("isApplicationWorkspace") && node != undefined) {
+            uri = `${this.config.get("region")}.console.aws.amazon.com/codesuite/codedeploy`;
+
+            switch (node.contextValue) {
+                case "application":
+                    uri = uri + `/applications/${node.label}`;
+                    break;
+
+                case "deployment":
+                    uri = uri + `/deployments/${node.label}`;
+                    break;
+
+                case "deployments":
+                    uri = uri + `/deployments/`;
+                    break;
+
+                case "deploymentGroup":
+                    uri = uri + `/applications/${this.config.get("applicationName")}/deployment-groups/${node.label}`;
+                    break;
+
+                case "deploymentGroups":
+                    uri = uri + `/applications/${this.config.get("applicationName")}/deploymentGroups`;
+                    break;
+
+                case "autoScalingGroups":
+                    uri = `console.aws.amazon.com/ec2/autoscaling/home?region=${this.config.get("region")}#AutoScalingGroups:view=details`;
+                    break;
+
+                default:
+                    if (node.contextValue.includes("autoscaling_")) {
+                        uri = `console.aws.amazon.com/ec2/autoscaling/home?region=${this.config.get("region")}#AutoScalingGroups:id=${node.label};view=details`;
+                    }
+                    break;
+            }
+        }
+        else {
+            uri = `console.aws.amazon.com/codesuite/codedeploy/start?`;
+        }
+
+        vscode.commands.executeCommand('vscode.open', vscode.Uri.parse("https://" + uri));
     }
 
     viewDeployment(node: any) {

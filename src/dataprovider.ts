@@ -28,10 +28,10 @@ export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscod
 
         if (!this.config.get("applicationName")) {
 
-            if (!this.config.get("isApplicationWorkspace")) {
-                await this.config.update("isApplicationWorkspace", false);
+            if (this.config.get("isApplicationWorkspace")) {
+                await this.config.update("isApplicationWorkspace", undefined);
             }
-            
+
             return;
         }
 

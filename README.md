@@ -1,5 +1,5 @@
 # AWS CodeDeploy VS Code Extension
-[![Build Status](https://travis-ci.org/mziyabo/vscode-codedeploy-extension.svg?branch=mainline)](https://travis-ci.org/mziyabo/vscode-codedeploy-extension) [![Marketplace Version](https://img.shields.io/vscode-marketplace/v/mziyabo.vscode-codedeploy.svg) ![Marketplace Downloads](https://img.shields.io/vscode-marketplace/d/mziyabo.vscode-codedeploy.svg)](https://marketplace.visualstudio.com/items?itemName=mziyabo.vscode-codedeploy) 
+![Build Status](https://travis-ci.org/mziyabo/vscode-codedeploy-extension.svg?branch=mainline) ![Marketplace Version](https://img.shields.io/vscode-marketplace/v/mziyabo.vscode-codedeploy.svg) ![Marketplace Downloads](https://img.shields.io/vscode-marketplace/i/mziyabo.vscode-codedeploy.svg)
 
 vscode [AWS CodeDeploy](https://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) extension for deploying to EC2.
 
@@ -41,4 +41,4 @@ Click `Add AutoScaling Group` or `Add EC2 Tag Filter` in the notification window
 This extension is still in preview.
 
 ## Licence
-[Apache 2.0 License](./LICENSE)
+[Apache-2.0](./LICENSE)

@@ -1,20 +1,17 @@
 'use strict';
-
 import * as vscode from 'vscode';
 import { CodeDeployTreeDataProvider } from './dataprovider'
 import { ExtCommand } from './commands/commands';
-
 let dataProvider: CodeDeployTreeDataProvider;
 
 export async function activate(context: vscode.ExtensionContext) {
-
     vscode.window.withProgress({
         cancellable: false,
         title: "Activating AWS CodeDeploy extension",
         location: vscode.ProgressLocation.Window
     },
         async (progress, token) => {
-            
+
             dataProvider = new CodeDeployTreeDataProvider();
             vscode.window.registerTreeDataProvider('cdExplorer', dataProvider);
 
@@ -39,8 +36,6 @@ export async function activate(context: vscode.ExtensionContext) {
         })
 
 }
-
-
 
 export function deactivate() {
 }

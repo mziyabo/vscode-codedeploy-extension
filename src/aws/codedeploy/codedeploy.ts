@@ -65,32 +65,41 @@ export class CodeDeployUtil {
 
     async addExistingApplication() {
 
-        let dialog: Dialog = new Dialog();
+        try {
 
-        let _region = await vscode.window.showQuickPick(AWSRegions.toQuickPickItemArray(), {
-            canPickMany: false,
-            placeHolder: "Select AWS CodeDeploy Region",
-            ignoreFocusOut: true
-        });
+            let dialog: Dialog = new Dialog();
 
-        if (!_region) return;
-
-        await this.config.update("region", _region.label);
-
-        let applications = await this.getApplicationsAsQuickPickItems();
-
-        dialog.addPrompt("_applicationName", async () => {
-            return await vscode.window.showQuickPick(applications, {
+            let _region = await vscode.window.showQuickPick(AWSRegions.toQuickPickItemArray(), {
                 canPickMany: false,
-                placeHolder: applications.length > 0 ? "Select AWS CodeDeploy Application" : `No CodeDeploy Applications Found in ${this.config.get("region")}`,
-                ignoreFocusOut: true,
+                ignoreFocusOut: true
             });
-        })
 
-        await dialog.run();
+            if (!_region) return;
 
-        if (!dialog.cancelled) {
-            await this.config.update("applicationName", dialog.getResponse("_applicationName"));
+            await this.config.update("region", _region.label);
+
+            let applications = await this.getApplicationsAsQuickPickItems();
+
+            dialog.addPrompt("_applicationName", async () => {
+                return await vscode.window.showQuickPick(applications, {
+                    canPickMany: false,
+                    placeHolder: applications.length > 0 ? "Select AWS CodeDeploy Application" : `No CodeDeploy Applications Found in ${this.config.get("region")}`,
+                    ignoreFocusOut: true,
+                });
+            })
+
+            await dialog.run();
+
+            if (!dialog.cancelled) {
+                await this.config.update("applicationName", dialog.getResponse("_applicationName"));
+            } else {
+                this.config.update("region", undefined);
+            }
+        }
+        catch (error) {
+            this.config.update("region", undefined);
+            this.config.update("applicationName", undefined);
+            throw error;
         }
     }
 
@@ -116,6 +125,7 @@ export class CodeDeployUtil {
     }
 
     async createApplication() {
+
 
         let dialog: Dialog = new Dialog();
 
@@ -144,18 +154,28 @@ export class CodeDeployUtil {
                 computePlatform: 'Server'
             };
 
-            return vscode.window.withProgress(
-                {
-                    cancellable: false,
-                    title: `Creating CodeDeploy Application: \'${dialog.getResponse("_applicationName")}\'`,
-                    location: vscode.ProgressLocation.Notification
-                }, async (progress, token) => {
-
-                    let response = await this.codedeploy.createApplication(applicationParams).promise();
-                    return response;
-                }
-            );
+            return vscode.window.withProgress({
+                cancellable: false,
+                title: `Creating CodeDeploy Application: \'${dialog.getResponse("_applicationName")}\'`,
+                location: vscode.ProgressLocation.Notification
+            },
+                async (progress, token) => {
+                    try {
+                        let response = await this.codedeploy.createApplication(applicationParams).promise();
+                        return response;
+                    }
+                    catch (error) {
+                        this.config.update("applicationName", undefined);
+                        this.config.update("region", undefined);
+                        throw error;
+                    }
+                });
         }
+        else {
+            this.config.update("region", undefined);
+        }
+
+
     }
 
     /**
@@ -879,25 +899,31 @@ export class CodeDeployUtil {
     async getApplicationsAsQuickPickItems() {
 
         this.initClient();
-
-        let listResponse = await this.codedeploy.listApplications({}).promise();
         let quickPickItems: QuickPickItem[] = [];
 
-        if (listResponse.applications) {
+        await vscode.window.withProgress({
+            cancellable: false,
+            location: vscode.ProgressLocation.Notification,
+            title: `Fetching CodeDeploy Applications in ${this.config.get("region")}`
+        }, async (progress, token) => {
 
-            if (listResponse.applications.length > 0) {
-                let batchResponse = await this.codedeploy.batchGetApplications({ applicationNames: listResponse.applications }).promise();
+            let listResponse = await this.codedeploy.listApplications({}).promise();
 
-                batchResponse.applicationsInfo.forEach(appInfo => {
-                    // Limited to CodeDeploy EC2
-                    if (appInfo.computePlatform == "Server") {
-                        let item: QuickPickItem = new QuickPickItem(appInfo.applicationName, "");
-                        quickPickItems.push(item);
-                    }
-                });
+            if (listResponse.applications) {
+
+                if (listResponse.applications.length > 0) {
+                    let batchResponse = await this.codedeploy.batchGetApplications({ applicationNames: listResponse.applications }).promise();
+
+                    batchResponse.applicationsInfo.forEach(appInfo => {
+                        // Limited to CodeDeploy EC2
+                        if (appInfo.computePlatform == "Server") {
+                            let item: QuickPickItem = new QuickPickItem(appInfo.applicationName, "");
+                            quickPickItems.push(item);
+                        }
+                    });
+                }
             }
-        }
-
+        });
         return quickPickItems;
     }
 
