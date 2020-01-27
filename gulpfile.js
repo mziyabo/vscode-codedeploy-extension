@@ -12,7 +12,7 @@ function build(cb) {
 
 // Clean output directory
 function clean(cb) {
-    return del("./out/**/*");
+    return del(["./out/**/*", "./dist/**/*"]);
 }
 
 exports.clean = clean;
