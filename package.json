@@ -29,9 +29,9 @@
   "dependencies": {
     "@types/node": "^13.5.0",
     "@types/vscode": "^1.41.0",
-    "adm-zip": "^0.4.13",
+    "adm-zip": "^0.4.14",
     "aws-sdk": "^2.610.0",
-    "vscode-nls": "^4.1.0"
+    "vscode-nls": "^4.1.2"
   },
   "devDependencies": {
     "del": "^2.2.1",
@@ -40,12 +40,12 @@
     "mocha": "^7.0.1",
     "mocha-junit-reporter": "^1.23.3",
     "mocha-multi-reporters": "^1.1.7",
-    "ts-loader": "^6.2.1",
+    "ts-loader": "^6.2.2",
     "typescript": "^3.7.5",
     "vscode": "^1.1.36",
     "vscode-nls-dev": "^3.3.1",
     "webpack": "^4.41.5",
-    "webpack-cli": "^3.3.10"
+    "webpack-cli": "^3.3.11"
   },
   "contributes": {
     "views": {
