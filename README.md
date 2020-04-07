@@ -36,9 +36,10 @@ Click `Add AutoScaling Group` or `Add EC2 Tag Filter` in the notification window
 ## Extension Limitations
 - Limited to CodeDeploy to EC2, i.e. Support for Lambda and ECS not yet available
 - Supports S3 revision locations- GitHub currently not available 
+- Blue/Green Deployments not yet supported
 
 ## Release Notes
-This extension is still in preview.
+This extension is still in preview and open to contribution.
 
 ## Licence
 [Apache-2.0](./LICENSE)
