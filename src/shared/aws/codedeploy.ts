@@ -1,15 +1,15 @@
 let AWS = require("aws-sdk");
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { Dialog } from '../../shared/ui/dialog';
-import { TreeItemUtil } from '../../shared/ui/treeItemUtil';
-import { QuickPickItem } from '../../shared/ui/quickpickitem';
-import { S3Util } from "../s3/s3";
-import { IAMUtil } from '../iam/iam';
-import { AutoScalingUtil } from '../autoscaling/autoscaling';
-import { AWSRegions } from '../../models/region';
-import { CDApplication, CDDeploymentGroup, CDDeployment } from "../../models/cdmodels";
-import { TreeItemIcons } from '../../shared/ui/icons';
+import { Dialog } from '../ui/dialog';
+import { TreeItemUtil } from '../ui/treeItemUtil';
+import { QuickPickItem } from '../ui/quickpickitem';
+import { S3Util } from "./s3";
+import { IAMUtil } from './iam';
+import { AutoScalingUtil } from './autoscaling';
+import { AWSRegions } from '../models/region';
+import { CDApplication, CDDeploymentGroup, CDDeployment } from "../models/cdmodels";
+import { TreeItemIcons } from '../ui/icons';
 
 export class CodeDeployUtil {
 

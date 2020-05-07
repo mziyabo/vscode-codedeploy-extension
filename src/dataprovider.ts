@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { CDApplication } from "./models/cdmodels";
-import { CodeDeployUtil } from './aws/codedeploy/codedeploy';
+import { CDApplication } from "./shared/models/cdmodels";
+import { CodeDeployUtil } from './shared/aws/codedeploy';
 
 export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
 

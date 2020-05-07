@@ -376,6 +376,9 @@
   },
   "activationEvents": [
     "onView:explorer",
-    "onView:cdExplorer"
+    "onView:cdExplorer",
+    "onCommand:cdExplorer.createApplication",
+    "onCommand:cdExplorer.refresh",
+    "onCommand:cdExplorer.selectApplication"
   ]
 }
