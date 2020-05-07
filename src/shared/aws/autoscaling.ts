@@ -1,6 +1,6 @@
 let AWS = require("aws-sdk");
 import * as vscode from "vscode";
-import { QuickPickItem } from "../../shared/ui/quickpickitem";
+import { QuickPickItem } from "../ui/quickpickitem";
 
 export class AutoScalingUtil {
 

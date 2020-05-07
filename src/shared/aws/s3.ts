@@ -1,7 +1,7 @@
 let AWS = require("aws-sdk");
 let AdmZip = require("adm-zip");
 import * as vscode from 'vscode';
-import { QuickPickItem } from '../../shared/ui/quickpickitem';
+import { QuickPickItem } from '../ui/quickpickitem';
 
 export class S3Util {
 

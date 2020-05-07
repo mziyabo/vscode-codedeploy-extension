@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { TreeItemIcons } from '../shared/ui/icons';
+import { TreeItemIcons } from '../ui/icons';
 
 export class CDApplication extends vscode.TreeItem {
 

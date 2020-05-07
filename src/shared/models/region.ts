@@ -1,4 +1,4 @@
-import { QuickPickItem } from "../shared/ui/quickpickitem";
+import { QuickPickItem } from "../ui/quickpickitem";
 
 export class AWSRegions {
 

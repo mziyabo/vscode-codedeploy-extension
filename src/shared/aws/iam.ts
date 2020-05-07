@@ -1,6 +1,6 @@
 let AWS = require('aws-sdk');
 import * as vscode from 'vscode'
-import { QuickPickItem } from '../../shared/ui/quickpickitem'
+import { QuickPickItem } from '../ui/quickpickitem'
 
 export class IAMUtil {
 
@@ -9,8 +9,8 @@ export class IAMUtil {
     constructor() {
         this.config = vscode.workspace.getConfiguration("codedeploy");
         if (this.config.get("enableAwsLogging")) {
-          AWS.config.logger = console;
-        } 
+            AWS.config.logger = console;
+        }
     }
 
     /**
@@ -22,7 +22,7 @@ export class IAMUtil {
             apiVersion: "2010-05-08"
         });
 
-        let response = await client.listRoles({ }).promise();
+        let response = await client.listRoles({}).promise();
         return response;
     }
 
