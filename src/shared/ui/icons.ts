@@ -1,59 +1,80 @@
 import { join } from 'path';
 import { Uri } from 'vscode';
 
-export let TreeItemIcons =
-{
-    "Target": {
-        "Succeeded": {
-            light: Uri.file(join(__dirname, "..", "resources/light/succeededTarget.svg")),
-            dark: Uri.file(join(__dirname, "..", "resources/dark/succeededTarget.svg"))
-        },
-        "Failed": {
-            light: Uri.file(join(__dirname, "..", "resources/light/errorTarget.svg")),
-            dark: Uri.file(join(__dirname, "..", "resources/dark/errorTarget.svg"))
-        },
-        "InProgress": {
-            light: Uri.file(join(__dirname, "..", "resources/light/pendingTarget.svg")),
-            dark: Uri.file(join(__dirname, "..", "resources/dark/pendingTarget.svg"))
-        },
-        "Unknown": {
-            light: Uri.file(join(__dirname, "..", "resources/light/unknownTarget.svg")),
-            dark: Uri.file(join(__dirname, "..", "resources/dark/unknownTarget.svg"))
-        }
-    },
-    "Deployment": {
-        "Failed": {
-            light: Uri.file(join(__dirname, "..", "resources/light/error.svg")),
-            dark: Uri.file(join(__dirname, "..", "resources/dark/error.svg"))
-        },
-        "Succeeded": {
-            light: Uri.file(join(__dirname, "..", "resources/light/check.svg")),
-            dark: Uri.file(join(__dirname, "..", "resources/dark/check.svg"))
-        },
-        "Stopped": {
-            light: Uri.file(join(__dirname, "..", "resources/light/stopped.svg")),
-            dark: Uri.file(join(__dirname, "..", "resources/dark/stopped.svg"))
-        },
-        "InProgress": {
-            light: Uri.file(join(__dirname, "..", `resources/light/progress.svg`)),
-            dark: Uri.file(join(__dirname, "..", `resources/dark/progress.svg`))
-        },
-        "Default": {
-            light: Uri.file(join(__dirname, "..", `resources/light/progress.svg`)),
-            dark: Uri.file(join(__dirname, "..", `resources/dark/progress.svg`))
-        }
-    },
-    "EC2Tag": {
-        light: Uri.file(join(__dirname, "..", "resources/light/tag.svg")),
-        dark: Uri.file(join(__dirname, "..", "resources/dark/tag.svg")),
-    },
-    "Application": {
-        light: Uri.file(join(__dirname, "..", "resources/light/codedeploy.svg")),
-        dark: Uri.file(join(__dirname, "..", "resources/dark/codedeploy.svg")),
-    },
-    "Property":
-    {
-        light: Uri.file(join(__dirname, "..", "resources/light/constant.svg")),
-        dark: Uri.file(join(__dirname, "..", "resources/dark/constant.svg"))
-    }
+/**
+ * Whether Dark/Light Theme
+ */
+enum themeType {
+    dark,
+    light
+};
+
+/**
+ * Get Icon URI
+ * @param name Icon Name
+ * @param theme Theme Type
+ */
+function getIconUri(name: string, theme: themeType) {
+    return Uri.file(join(__dirname, "..", `resources/${themeType[theme]}/${name}.svg`));
 }
+
+export const TreeItemIcons =
+{
+    Autoscaling: {
+        light: getIconUri('autoscaling', themeType.light),
+        dark: getIconUri('autoscaling', themeType.dark)
+    },
+    Target: {
+        Succeeded: {
+            light: getIconUri('succeededTarget', themeType.light),
+            dark: getIconUri('succeededTarget', themeType.dark)
+        },
+        Failed: {
+            light: getIconUri('errorTarget', themeType.light),
+            dark: getIconUri('errorTarget', themeType.dark)
+        },
+        InProgress: {
+            light: getIconUri('pendingTarget', themeType.light),
+            dark: getIconUri('pendingTarget', themeType.dark)
+        },
+        Unknown: {
+            light: getIconUri('unknownTarget', themeType.light),
+            dark: getIconUri('unknownTarget', themeType.dark)
+        }
+    },
+    Deployment: {
+        Failed: {
+            light: getIconUri('error', themeType.light),
+            dark: getIconUri('error', themeType.dark)
+        },
+        Succeeded: {
+            light: getIconUri('check', themeType.light),
+            dark: getIconUri('check', themeType.dark)
+        },
+        Stopped: {
+            light: getIconUri('stopped', themeType.light),
+            dark: getIconUri('stopped', themeType.dark)
+        },
+        InProgress: {
+            light: getIconUri('progress', themeType.light),
+            dark: getIconUri('progress', themeType.dark)
+        },
+        Default: {
+            light: getIconUri('progress', themeType.light),
+            dark: getIconUri('progress', themeType.dark)
+        }
+    },
+    EC2Tag: {
+        light: getIconUri('tag', themeType.light),
+        dark: getIconUri('tag', themeType.dark),
+    },
+    Application: {
+        light: getIconUri('codedeploy', themeType.light),
+        dark: getIconUri('codedeploy', themeType.dark)
+    },
+    Property:
+    {
+        light: getIconUri('constant', themeType.light),
+        dark: getIconUri('constant', themeType.dark)
+    }
+};

@@ -1,232 +1,43 @@
-let AWS = require("aws-sdk");
-import * as vscode from 'vscode';
 import * as path from 'path';
+import { config } from '../config';
+import { CDDeployment, CDDeploymentGroup, CDApplication } from "../models/cdmodels";
 import { Dialog } from '../ui/dialog';
-import { TreeItemUtil } from '../ui/treeItemUtil';
-import { QuickPickItem } from '../ui/quickpickitem';
-import { S3Util } from "./s3";
-import { IAMUtil } from './iam';
-import { AutoScalingUtil } from './autoscaling';
-import { AWSRegions } from '../models/region';
-import { CDApplication, CDDeploymentGroup, CDDeployment } from "../models/cdmodels";
 import { TreeItemIcons } from '../ui/icons';
+import { QuickPickItem } from '../ui/input';
+import { TreeItemUtil } from '../ui/treeItemUtil';
+import { AWSClient, Service } from './awsclient';
+import { S3Util } from "./s3";
+import {
+    ThemeIcon, TreeItemCollapsibleState, TreeItem, window,
+    ProgressLocation, Uri, workspace, WorkspaceEdit, Position
+} from 'vscode';
+import { ELBUtil } from './elb';
+const nls = require('vscode-nls');
+const localize = nls.loadMessageBundle();
 
+/**
+ * AWS CodeDeploy Client Proxy
+ */
 export class CodeDeployUtil {
 
-    private codedeploy;
-    private config: vscode.WorkspaceConfiguration;
-
-    constructor() {
-        this.config = vscode.workspace.getConfiguration("codedeploy");
-        if (this.config.get("enableAwsLogging")) {
-            AWS.config.logger = console;
-        }
-    }
-
     /**
-     * Initialize/Update/Get/Refresh Global variables
-     */
-    async initClient() {
-        this.config = vscode.workspace.getConfiguration("codedeploy");
-
-        if (this.config.get("region")) {
-            this.codedeploy = new AWS.CodeDeploy({
-                apiVersion: '2014-10-06',
-                region: this.config.get("region")
-            });
-        }
-    }
-
-    /**
-     * Returns CodeDeploy Application for Workspace
+     * Returns CodeDeploy Application linked to Workspace
      * @return Promise<CDApplication[]>
      */
     async getApplication(): Promise<CDApplication> {
 
-        this.initClient();
+        if (config.get("applicationName") && config.get("region")) {
 
-        // Get CodeDeploy Application
-        var applicationparams = {
-            applicationName: this.config.get("applicationName")
-        };
-
-        let response = await this.codedeploy.getApplication(applicationparams).promise();
-
-        if (response.application) {
-
-            let application = new CDApplication(response.application.applicationName, vscode.TreeItemCollapsibleState.Collapsed);
-            application.description = this.config.get("region");
-            application.Data = response;
-            return application;
-        }
-
-        return;
-    }
-
-    async addExistingApplication() {
-
-        try {
-
-            let dialog: Dialog = new Dialog();
-
-            let _region = await vscode.window.showQuickPick(AWSRegions.toQuickPickItemArray(), {
-                canPickMany: false,
-                ignoreFocusOut: true
+            const response = await AWSClient.executeAsync(Service.CodeDeploy, "getApplication", {
+                applicationName: config.get("applicationName")
             });
 
-            if (!_region) return;
-
-            await this.config.update("region", _region.label);
-
-            let applications = await this.getApplicationsAsQuickPickItems();
-
-            dialog.addPrompt("_applicationName", async () => {
-                return await vscode.window.showQuickPick(applications, {
-                    canPickMany: false,
-                    placeHolder: applications.length > 0 ? "Select AWS CodeDeploy Application" : `No CodeDeploy Applications Found in ${this.config.get("region")}`,
-                    ignoreFocusOut: true,
-                });
-            })
-
-            await dialog.run();
-
-            if (!dialog.cancelled) {
-                await this.config.update("applicationName", dialog.getResponse("_applicationName"));
-            } else {
-                this.config.update("region", undefined);
+            if (response?.application) {
+                const application = new CDApplication(response.application.applicationName, TreeItemCollapsibleState.Collapsed);
+                application.description = config.get("region").toString();
+                application.Data = response;
+                return application;
             }
-        }
-        catch (error) {
-            this.config.update("region", undefined);
-            this.config.update("applicationName", undefined);
-            throw error;
-        }
-    }
-
-    /**
-     * Create a CodeDeploy Application and Deployment Group for Workspace
-     */
-    async scaffoldApplication() {
-
-        let createAppResponse = await this.createApplication();
-
-        if (createAppResponse) {
-
-            let createDeploymentGroupResponse = await this.createDeploymentGroup();
-            // TODO: prompt to add deployment targets ec2TargetFilter/AutoScalingGroup
-            if (createDeploymentGroupResponse) {
-                return {
-                    applicationName: this.config.get("applicationName"),
-                    deploymentGroupName: createDeploymentGroupResponse.deploymentGroupName
-                }
-            }
-
-        }
-    }
-
-    async createApplication() {
-
-
-        let dialog: Dialog = new Dialog();
-
-        let _region = await vscode.window.showQuickPick(AWSRegions.toQuickPickItemArray(), {
-            canPickMany: false,
-            placeHolder: "Select AWS CodeDeploy Region",
-            ignoreFocusOut: true,
-        });
-
-        if (!_region) return;
-        await this.config.update("region", _region.label);
-
-        dialog.addPrompt("_applicationName", async () => { return await vscode.window.showInputBox({ prompt: "Enter Application Name" }) })
-        await dialog.run();
-
-        if (!dialog.cancelled) {
-
-            // Update Configuration
-            await this.config.update("applicationName", dialog.getResponse("_applicationName"));
-
-            this.initClient();
-
-            // CreateApplication
-            var applicationParams = {
-                applicationName: dialog.getResponse("_applicationName"),
-                computePlatform: 'Server'
-            };
-
-            return vscode.window.withProgress({
-                cancellable: false,
-                title: `Creating CodeDeploy Application: \'${dialog.getResponse("_applicationName")}\'`,
-                location: vscode.ProgressLocation.Notification
-            },
-                async (progress, token) => {
-                    try {
-                        let response = await this.codedeploy.createApplication(applicationParams).promise();
-                        return response;
-                    }
-                    catch (error) {
-                        this.config.update("applicationName", undefined);
-                        this.config.update("region", undefined);
-                        throw error;
-                    }
-                });
-        }
-        else {
-            this.config.update("region", undefined);
-        }
-
-
-    }
-
-    /**
-     * Create CodeDeploy DeploymentGroup
-     */
-    async createDeploymentGroup() {
-
-        this.initClient();
-
-        let iamUtil = new IAMUtil();
-
-        let dialog: Dialog = new Dialog();
-
-        dialog.addPrompt("_deploymentGroupName", async () => {
-            return await vscode.window.showInputBox({
-                prompt: "Enter Deployment Group Name",
-                placeHolder: `e.g. ${this.config.get("applicationName")}-Dev`,
-                ignoreFocusOut: true
-            });
-        });
-
-        dialog.addPrompt("_serviceRoleArn", async () => {
-            return await vscode.window.showQuickPick(iamUtil.getRolesAsQuickPickItems(), {
-                canPickMany: false,
-                placeHolder: "Select CodeDeploy Service Role:",
-                ignoreFocusOut: true,
-            });
-        });
-
-        await dialog.run();
-
-        if (!dialog.cancelled) {
-
-            // CreateDeploymentGroup
-            var params = {
-                applicationName: this.config.get("applicationName"),
-                deploymentGroupName: dialog.getResponse("_deploymentGroupName"),
-                serviceRoleArn: dialog.getResponse("_serviceRoleArn")
-            }
-
-            return vscode.window.withProgress({
-                cancellable: false,
-                title: `Creating Deployment Group: \'${dialog.getResponse("_deploymentGroupName")}\'`,
-                location: vscode.ProgressLocation.Notification
-            }, async (progress, token) => {
-                let response = await this.codedeploy.createDeploymentGroup(params).promise();
-                return {
-                    data: response,
-                    deploymentGroupName: dialog.getResponse("_deploymentGroupName")
-                };
-            });
         }
     }
 
@@ -234,363 +45,267 @@ export class CodeDeployUtil {
      * Set revision bucket and local directory to use
      */
     async configureRevisionLocations() {
-
-        let dialog: Dialog = new Dialog();
-
-        let s3: S3Util = new S3Util();
-        let buckets: QuickPickItem[] = await s3.getS3BucketsAsQuickItem();
+        const s3: S3Util = new S3Util();
+        const buckets: QuickPickItem[] = await s3.getS3BucketsAsQuickItem();
+        const dialog: Dialog = new Dialog();
 
         dialog.addPrompt("bucket", () => {
-
-            return vscode.window.showQuickPick(buckets, {
+            return window.showQuickPick(buckets, {
                 canPickMany: false,
                 placeHolder: "Select S3 Revision Bucket",
-                ignoreFocusOut: true
-            })
+                ignoreFocusOut: true,
+            });
         });
 
         dialog.addPrompt("localDir", async () => {
-            return await vscode.window.showWorkspaceFolderPick({ placeHolder: "Enter Local Revision Location:", ignoreFocusOut: true })
+            return await window.showWorkspaceFolderPick({ placeHolder: "Enter Local Revision Location:", ignoreFocusOut: true });
         });
 
         await dialog.run();
-        this.config = vscode.workspace.getConfiguration("codedeploy");
 
         if (!dialog.cancelled) {
-
-            await this.config.update("revisionBucket", dialog.getResponse("bucket"));
-            await this.config.update("revisionLocalDirectory", dialog.getResponse("localDir").uri.fsPath);
+            await config.update("revisionBucket", dialog.getResponse("bucket"));
+            await config.update("revisionLocalDirectory", dialog.getResponse("localDir").uri.fsPath);
         }
 
         return dialog.cancelled;
     }
 
     /**
-     * Deploy CodeDeploy Application
-     */
-    async deploy(deploymentGroupName: string) {
-
-        let revisionName = await vscode.window.showInputBox({ prompt: "Enter Revision Name:", ignoreFocusOut: true });
-        if (!revisionName) return;
-
-        let cancelled: Boolean = await this.configureRevisionLocations();
-        if (cancelled) return;
-
-        this.initClient();
-
-        // Archive revision and upload to s3
-        let s3Util = new S3Util();
-        let buffer = s3Util.archive(await this.config.get("revisionLocalDirectory"));
-        let revisionEtag: string = await s3Util.upload(buffer, this.config.get("revisionBucket"), revisionName);
-
-        if (revisionEtag) {
-
-            // Create Deployment
-            var params = {
-                applicationName: this.config.get("applicationName"), /* required */
-                deploymentGroupName: deploymentGroupName,
-                revision: {
-                    s3Location: {
-                        bucket: this.config.get("revisionBucket"),
-                        key: revisionName,
-                        eTag: revisionEtag,
-                        bundleType: "zip"
-                    },
-                    revisionType: "S3"
-                }
-            }
-
-            let createResponse = await vscode.window.withProgress({
-                cancellable: false,
-                title: "Creating CodeDeploy Application",
-                location: vscode.ProgressLocation.Notification
-            }, async (progress, token) => {
-
-                let response = await this.codedeploy.createDeployment(params).promise();
-                console.log(`Deployment Started ${response.deploymentId}`);
-                return response;
-            });
-
-            if (createResponse) {
-
-                let openResponse = await vscode.window.showInformationMessage(`Open Deployment ${createResponse.deploymentId} in AWS Console to track progress?`, "Yes", "No");
-
-                if (openResponse == "Yes") {
-                    let uri = `${this.config.get("region")}.console.aws.amazon.com/codesuite/codedeploy/deployments/${createResponse.deploymentId}`
-                    vscode.commands.executeCommand('vscode.open', vscode.Uri.parse("https://" + uri));
-                }
-            }
-        }
-
-    }
-
-    /**
      * Get Deployment Group
      */
-    async getDeploymentGroup(deploymentGroupName: string): Promise<CDDeploymentGroup> {
+    async getDeploymentGroup(deploymentGroup: string): Promise<CDDeploymentGroup> {
 
-        if (!deploymentGroupName) {
-            return;
-        }
+        if (deploymentGroup) {
+            const params = {
+                applicationName: config.get("applicationName"),
+                deploymentGroupName: deploymentGroup
+            };
 
-        this.initClient();
+            const response = await AWSClient.executeAsync(Service.CodeDeploy, "getDeploymentGroup", params);
 
-        // Get Deployment Group
-        var params = {
-            applicationName: this.config.get("applicationName"),
-            deploymentGroupName: deploymentGroupName
-        };
-
-        var response = await this.codedeploy.getDeploymentGroup(params).promise();
-
-        if (response.deploymentGroupInfo) {
-            let deploymentGroup = new CDDeploymentGroup(response.deploymentGroupInfo.deploymentGroupName);
-            deploymentGroup.Data = response.deploymentGroupInfo;
-            return deploymentGroup;
-        }
-
-    }
-
-    /**
-     * Retrieve CodeDeploy Deployments
-     */
-    async getDeployments(deploymentGroupName: string): Promise<CDDeployment[]> {
-
-        //TODO: prompt to add DeploymentGroup    
-        if (!deploymentGroupName)
-            return;
-
-        this.initClient();
-
-        let deploymentDetails: CDDeployment[] = [];
-
-        // Get Deployments
-        // TODO: review removing this to move to showing multiple deployments
-        var deploymentsParams = {
-            applicationName: this.config.get("applicationName"),
-            deploymentGroupName: deploymentGroupName,
-            includeOnlyStatuses: [
-                "Created",
-                "Queued",
-                "InProgress",
-                "Succeeded",
-                "Failed",
-                "Stopped",
-                "Ready"
-            ]
-        };
-
-        await vscode.window.withProgress({
-            cancellable: false,
-            title: `Fetching CodeDeploy Deployments`,
-            location: vscode.ProgressLocation.Window
-        }, async (progress, token) => {
-
-            var response = await this.codedeploy.listDeployments(deploymentsParams).promise();
-
-            let deploymentIds: string[] = await response.deployments;
-            // TODO: replace limit with configuration
-            let limit = deploymentIds.length > 5 ? 5 : deploymentIds.length;
-
-            if (deploymentIds.length > 0) {
-                let _deployments = await this.batchGetDeployments(deploymentIds.slice(0, limit));
-
-                for (let index = 0; index < _deployments.length; index++) {
-                    const deployment = _deployments[index];
-
-                    deployment.tooltip = `${deployment.Data.status}`;
-
-                    switch (deployment.Data.status) {
-                        case "Failed":
-                            deployment.tooltip += `- ${deployment.Data.completeTime} - ${deployment.Data.errorInformation.message}`;
-                            deployment.description = `- ${deployment.Data.errorInformation.message}`;
-                            deployment.iconPath = TreeItemIcons.Deployment.Failed;
-                            break;
-
-                        case "Succeeded":
-                            deployment.tooltip += `- ${deployment.Data.completeTime}`;
-                            deployment.iconPath = TreeItemIcons.Deployment.Succeeded;
-                            break;
-
-                        case "Stopped":
-                            deployment.iconPath = TreeItemIcons.Deployment.Stopped;
-                            break;
-
-                        case "InProgress":
-                            deployment.iconPath = TreeItemIcons.Deployment.InProgress;
-                            break;
-
-                        default:
-                            deployment.iconPath = TreeItemIcons.Deployment.InProgress;
-                            break;
-                    }
-
-                    deploymentDetails.push(deployment);
-                }
+            if (response.deploymentGroupInfo) {
+                const deploymentGroup = new CDDeploymentGroup(response.deploymentGroupInfo.deploymentGroupName);
+                deploymentGroup.Data = response.deploymentGroupInfo;
+                return deploymentGroup;
             }
-        });
+        }
+    }
 
-        return deploymentDetails;
+    async getLoadBalancerInfo(deploymentGroup: string): Promise<TreeItem[]> {
+
+        const loadBalancerItems = [];
+        const elbUtil = new ELBUtil();
+        const dg = await this.getDeploymentGroup(deploymentGroup);
+
+        const loadBalancerInfo = dg.Data.loadBalancerInfo;
+        // Use Classic Load Balancer
+        if (loadBalancerInfo?.elbInfoList) {
+            const elbName = loadBalancerInfo.elbInfoList[0].name;
+
+            if (elbName) {
+
+                const elb = await elbUtil.getELB(elbName);
+                const elbTreeItem = {
+                    label: `${elb.name} - ${elb.Scheme}`,
+                    contextValue: `elb_${deploymentGroup}`,
+                    id: `elb_${deploymentGroup}`,
+                    collapsibleState: TreeItemCollapsibleState.None
+                };
+
+                loadBalancerItems.push(TreeItemUtil.TreeItem(elbTreeItem));
+            }
+        }
+        // Use TargetGroup (ALB/NLB)
+        else if (loadBalancerInfo?.targetGroupInfoList) {
+            const targetGroupInfo = await elbUtil.getTargetGroups(loadBalancerInfo.targetGroupInfoList[0].name);
+
+            if (targetGroupInfo) {
+                targetGroupInfo.TargetGroups.forEach((tg) => {
+                    loadBalancerItems.push(TreeItemUtil.TreeItem({
+                        label: `${tg.TargetGroupName}`,
+                        description: `- ${tg.Protocol}:${tg.Port} - TargetType: ${tg.TargetType}`,
+                        contextValue: `tg_${deploymentGroup}`,
+                        id: `tg_${deploymentGroup}`,
+                        tooltip: tg.TargetGroupArn,
+                        collapsibleState: TreeItemCollapsibleState.None
+                    }));
+                });
+            }
+        }
+
+        return loadBalancerItems;
     }
 
     /**
-     * 
-     * @param deploymentIds 
+     * Retrieve deployments
+     * @param deploymentGroup
+     */
+    async getDeployments(deploymentGroup: string): Promise<CDDeployment[]> {
+
+        if (deploymentGroup) {
+            const deploymentDetails: CDDeployment[] = [];
+
+            const deploymentsParams = {
+                applicationName: config.get("applicationName"),
+                deploymentGroupName: deploymentGroup,
+                includeOnlyStatuses: [
+                    "Created",
+                    "Queued",
+                    "InProgress",
+                    "Succeeded",
+                    "Failed",
+                    "Stopped",
+                    "Ready"
+                ]
+            };
+
+            await window.withProgress({
+                cancellable: false,
+                location: ProgressLocation.Window,
+                title: localize(`Fetching CodeDeploy Deployments`)
+            }, async () => {
+
+                const response = await AWSClient.executeAsync(Service.CodeDeploy, "listDeployments", deploymentsParams);
+                const deploymentIds: string[] = await response.deployments;
+
+                if (deploymentIds.length > 0) {
+                    const limit = (Number)(config.get("maximumDeployments"));
+                    const deployments = await this.batchGetDeployments(deploymentIds.slice(0, limit));
+
+                    for (const deployment of deployments) {
+                        deployment.tooltip = `${deployment.Data.status}`;
+
+                        switch (deployment.Data.status) {
+
+                            case "Failed":
+                                deployment.tooltip += `- ${deployment.Data.completeTime} - ${deployment.Data.errorInformation.message}`;
+                                deployment.description = `- ${deployment.Data.errorInformation.message}`;
+                                deployment.iconPath = TreeItemIcons.Deployment.Failed;
+                                break;
+
+                            case "Succeeded":
+                                deployment.tooltip += `- ${deployment.Data.completeTime}`;
+                                deployment.iconPath = TreeItemIcons.Deployment.Succeeded;
+                                deployment.description = `- duration: ${(deployment.Data.completeTime - deployment.Data.createTime) / 1000}s - ${deployment.Data.completeTime}`;
+                                break;
+
+                            case "Stopped":
+                                deployment.iconPath = TreeItemIcons.Deployment.Stopped;
+                                break;
+
+                            case "InProgress":
+                                deployment.collapsibleState = TreeItemCollapsibleState.Collapsed;
+                                break;
+
+                            default:
+                                deployment.iconPath = TreeItemIcons.Deployment.InProgress;
+                                break;
+                        }
+
+                        deploymentDetails.push(deployment);
+                    }
+                }
+            });
+
+            return deploymentDetails;
+        }
+    }
+
+    /**
+     *
+     * @param deploymentIds
      */
     async batchGetDeployments(deploymentIds: string[]): Promise<CDDeployment[]> {
 
-        let deployments: CDDeployment[] = [];
-        this.initClient();
-
-        let params = {
+        const deployments: CDDeployment[] = [];
+        const response = await AWSClient.executeAsync(Service.CodeDeploy, "batchGetDeployments", {
             deploymentIds: deploymentIds
-        }
+        });
 
-        let response = await this.codedeploy.batchGetDeployments(params).promise();
-
-        response.deploymentsInfo.forEach(deployment => {
-            let d: CDDeployment = new CDDeployment(deployment.deploymentId);
+        response.deploymentsInfo.forEach((deployment) => {
+            const d: CDDeployment = new CDDeployment(deployment.deploymentId);
             d.Data = deployment;
             deployments.push(d);
         });
 
-        return deployments.sort((a, b) => { return b.Data.createTime - a.Data.createTime });
+        return deployments.sort((a, b) => { return b.Data.createTime - a.Data.createTime; });
     }
 
     /**
      * Retrieves CodeDeploy Deployment
-     * @param deploymentId 
+     * @param deploymentId
      */
     async getDeployment(deploymentId: string) {
 
-        this.initClient();
-
-        let params = {
+        const response = await AWSClient.executeAsync(Service.CodeDeploy, "getDeployment", {
             deploymentId: deploymentId
-        };
+        });
 
-        let response = await this.codedeploy.getDeployment(params).promise();
         return response;
     }
 
     /**
      * Displays CodeDeploy DeploymentInformation in a TextDocument for given deploymentId
-     * @param deploymentId 
+     * @param deploymentId
      */
     async viewDeployment(deploymentId: any) {
 
-        let response = await this.getDeployment(deploymentId);
+        const response = await this.getDeployment(deploymentId);
+        const uri = Uri.parse(`untitled:${path.join(`${deploymentId}.json`)}`);
 
-        let uri = vscode.Uri.parse("untitled:" + path.join(`${deploymentId}.json`));
-        vscode.workspace.openTextDocument(uri).then(document => {
-            const edit = new vscode.WorkspaceEdit();
-            edit.insert(uri, new vscode.Position(0, 0), JSON.stringify(response, null, "\t"));
-            return vscode.workspace.applyEdit(edit).then(success => {
+        workspace.openTextDocument(uri).then((document) => {
+            const edit = new WorkspaceEdit();
+            edit.insert(uri, new Position(0, 0), JSON.stringify(response, null, "\t"));
+            return workspace.applyEdit(edit).then((success) => {
                 if (success) {
-                    vscode.window.showTextDocument(document);
+                    window.showTextDocument(document);
                 } else {
-                    vscode.window.showInformationMessage('Unknown Error');
+                    window.showInformationMessage('Unknown Error');
                 }
             });
         });
-
     }
 
-    async deleteApplication(applicationName: string) {
+    async getDeploymentTargetTreeItems(deploymentId: string): Promise<TreeItem[]> {
 
-        let confirmDelete = await vscode.window.showInformationMessage(`Are you sure you want to delete ${applicationName}?`, { modal: true }, "Delete");
-        if (confirmDelete == "Delete") {
-
-            this.initClient();
-
-            let params = {
-                applicationName: applicationName
-            };
-
-            return await vscode.window.withProgress(
-                {
-                    cancellable: false,
-                    location: vscode.ProgressLocation.Notification,
-                    title: `Deleting Application ${applicationName}`
-                },
-                async (progress, token) => {
-                    let response = await this.codedeploy.deleteApplication(params).promise();
-                    return response;
-                }
-            )
-        }
-    }
-
-    async deleteDeploymentGroup(deploymentGroupName: string) {
-
-        let confirmDelete = await vscode.window.showInformationMessage(`Are you sure you want to delete ${deploymentGroupName}?`, { modal: true }, "Delete");
-        if (confirmDelete == "Delete") {
-
-            this.initClient();
-
-            let params = {
-                applicationName: this.config.get("applicationName"),
-                deploymentGroupName: deploymentGroupName
-            }
-
-            await vscode.window.withProgress(
-                {
-                    cancellable: false,
-                    location: vscode.ProgressLocation.Notification,
-                    title: `Deleting Deployment Group ${deploymentGroupName}`
-                },
-                async (progress, token) => {
-                    let response = await this.codedeploy.deleteDeploymentGroup(params).promise();
-                }
-            )
-
-        }
-    }
-    async getDeploymentTargetTreeItems(deploymentId: string): Promise<vscode.TreeItem[]> {
-
-        this.initClient();
-
-        // List Targets
-        let listParams = {
+        const listResponse = await AWSClient.executeAsync(Service.CodeDeploy, "listDeploymentTargets", {
             deploymentId: deploymentId
-        };
+        });
 
-        let listResponse = await this.codedeploy.listDeploymentTargets(listParams).promise();
+        if (listResponse?.targetIds.length > 0) {
 
-        if (listResponse.targetIds.length > 0) {
-
-            // Get Target Details
-            let batchTargetParams = {
+            const batchTargetParams = {
                 deploymentId: deploymentId,
                 targetIds: listResponse.targetIds
-            }
+            };
+            const batchTargetResponse = await AWSClient.executeAsync(Service.CodeDeploy, "batchGetDeploymentTargets", batchTargetParams);
+            const targets: TreeItem[] = [];
 
-            let batchTargetResponse = await this.codedeploy.batchGetDeploymentTargets(batchTargetParams).promise();
+            batchTargetResponse.deploymentTargets.forEach((target) => {
 
-            let targets: vscode.TreeItem[] = [];
+                if (target.deploymentTargetType === "InstanceTarget") {
 
-            batchTargetResponse.deploymentTargets.forEach(target => {
-                // Create Target TreeItems
-                if (target.deploymentTargetType == "InstanceTarget") {
-
-                    let treeitem = TreeItemUtil.addCollapsedItem(target.instanceTarget.targetId, "instanceTarget");
-                    treeitem.collapsibleState = vscode.TreeItemCollapsibleState.None;
-                    treeitem.tooltip = `${target.instanceTarget.status} - ${target.instanceTarget.lastUpdatedAt}`;
+                    const treeitem = TreeItemUtil.TreeItem({
+                        label: `${target.instanceTarget.targetId}`,
+                        contextValue: "instanceTarget",
+                        collapsibleState: TreeItemCollapsibleState.None,
+                        tooltip: `${target.instanceTarget.status} - ${target.instanceTarget.lastUpdatedAt}`
+                    });
 
                     switch (target.instanceTarget.status) {
+
                         case "Failed":
-
                             treeitem.contextValue = "instanceTarget_failed";
-                            treeitem.iconPath = TreeItemIcons.Target.Failed
+                            treeitem.iconPath = TreeItemIcons.Target.Failed;
 
-                            for (let index = 0; index < target.instanceTarget.lifecycleEvents.length; index++) {
-                                const _event = target.instanceTarget.lifecycleEvents[index];
-                                if (_event.status == "Failed") {
-                                    treeitem.tooltip = `${_event.lifecycleEventName} ${_event.status} - ${_event.diagnostics.errorCode}: ${_event.diagnostics.message}`;
+                            for (const lifecycleEvent of target.instanceTarget.lifecycleEvents) {
+                                if (lifecycleEvent.status === "Failed") {
+                                    treeitem.tooltip = `${lifecycleEvent.lifecycleEventName} ${lifecycleEvent.status} - ${lifecycleEvent.diagnostics.errorCode}: ${lifecycleEvent.diagnostics.message}`;
                                     break;
                                 }
-                                else if (_event.status == "Skipped") {
-                                    treeitem.tooltip = `${_event.status} lifecycle events - ${_event.endTime}`;
+                                else if (lifecycleEvent.status === "Skipped") {
+                                    treeitem.tooltip = `${lifecycleEvent.status} lifecycle events - ${lifecycleEvent.endTime}`;
                                     break;
                                 }
                             }
@@ -617,140 +332,148 @@ export class CodeDeployUtil {
         }
     }
 
-    async getDeploymentGroupTreeItem(deploymentGroupName: string): Promise<vscode.TreeItem[]> {
+    async getDeploymentGroupSettings(deploymentGroup: string): Promise<TreeItem[]> {
+        const dg = (await this.getDeploymentGroup(deploymentGroup)).Data;
 
-        let dg = await this.getDeploymentGroup(deploymentGroupName);
-
-        let properties = [];
         if (dg) {
+            const props: TreeItem[] = [];
 
-            let tagFiltersItem = TreeItemUtil.addCollapsedItem("EC2 Tag Filters", "ec2TagFilters");
-            tagFiltersItem.id = `filter_groupid_${deploymentGroupName}`;
-            properties.push(tagFiltersItem);
+            props.push(
+                TreeItemUtil.TreeItem({ label: `Compute Platform=${dg.computePlatform}`, contextValue: "platform" }),
+                TreeItemUtil.TreeItem({ label: `Deployment Config=${dg.deploymentConfigName}`, contextValue: "configuration" }),
+                TreeItemUtil.TreeItem({ label: `Deployment Option=${dg.deploymentStyle.deploymentOption}`, contextValue: "option" }),
+                TreeItemUtil.TreeItem({ label: `Deployment Type=${dg.deploymentStyle.deploymentType}`, contextValue: "type" })
+            );
 
-            let asgsItem = TreeItemUtil.addCollapsedItem("Auto Scaling Groups", "autoScalingGroups");
-            asgsItem.id = `asg_groupid_${deploymentGroupName}`;
-            properties.push(asgsItem);
+            if (dg.deploymentStyle.deploymentType === "BLUE_GREEN" && dg.blueGreenDeploymentConfiguration) {
+                props.push(
+                    TreeItemUtil.TreeItem({
+                        label: `Green Fleet Provisioning Option=${dg.blueGreenDeploymentConfiguration.greenFleetProvisioningOption.action}`,
+                        contextValue: "action"
+                    }),
+                    TreeItemUtil.TreeItem({
+                        label: `Terminate On Deployment Success=${dg.blueGreenDeploymentConfiguration.terminateBlueInstancesOnDeploymentSuccess.action}`,
+                        contextValue: "action",
+                        tooltip: `Termination WaitTime (Minutes): ${dg.blueGreenDeploymentConfiguration.terminateBlueInstancesOnDeploymentSuccess.terminationWaitTimeInMinutes}`
+                    }),
+                );
+            }
 
-            // TODO: check if we can't get the parent label, i.e. DeploymentGroupName so that we don't use id
-            let deploymentsTreeItem: vscode.TreeItem = TreeItemUtil.addCollapsedItem("Deployments", "deployments");
-            deploymentsTreeItem.id = `deployments_groupid_${deploymentGroupName}`;
+            props.forEach((prop) => {
+                prop.iconPath = new ThemeIcon("symbol-constant");
+                prop.collapsibleState = TreeItemCollapsibleState.None;
+            });
 
-            properties.push(deploymentsTreeItem);
+            props.push(
+                TreeItemUtil.TreeItem({
+                    label: "LoadBalancer Info",
+                    contextValue: "loadBalancer",
+                    iconPath: new ThemeIcon("file-directory"),
+                    id: `elbInfo_${deploymentGroup}`
+                }),
+                // TreeItemUtil.TreeItem({
+                //     label: "Blue Green Configuration",
+                //     contextValue: "blueGreen",
+                //     iconPath: new ThemeIcon("file-directory"),
+                //     id: `blueGreen_${deploymentGroup}`
+                // })
+            );
+
+            return props;
         }
-
-        return properties;
     }
 
+    async getDeploymentGroupTreeItem(deploymentGroup: string): Promise<TreeItem[]> {
 
-    async getDeploymentGroupsTreeItems(): Promise<vscode.TreeItem[]> {
+        if (await this.getDeploymentGroup(deploymentGroup)) {
+            const treeItemOptions = [];
 
-        this.initClient();
+            treeItemOptions.push(
+                {
+                    label: "DeploymentGroup Info",
+                    contextValue: "dgSettings",
+                    id: `settings_${deploymentGroup}`,
+                    iconPath: new ThemeIcon("symbol-property"),
+                    collapsibleState: TreeItemCollapsibleState.Expanded
+                },
+                {
+                    label: "EC2 Tag Filters",
+                    contextValue: "ec2TagFilters",
+                    id: `tags_${deploymentGroup}`
+                },
+                {
+                    label: "Auto Scaling Groups",
+                    contextValue: "autoScalingGroups",
+                    id: `autoscaling_${deploymentGroup}`
+                },
+                {
+                    label: "Deployments",
+                    contextValue: "deployments",
+                    id: `deployment_${deploymentGroup}`,
+                    tooltip: `- last ${config.get("maximumDeployments")}. Use 'Maximum Deployments' setting to adjust.`
+                }
+            );
 
-        let params = {
-            applicationName: this.config.get("applicationName")
+            const deployGroupItems: TreeItem[] = [];
+            treeItemOptions.forEach((options) => {
+                deployGroupItems.push(TreeItemUtil.TreeItem(options));
+            });
+
+            return deployGroupItems;
         }
+    }
 
-        let response = await this.codedeploy.listDeploymentGroups(params).promise();
-        let deploymentGroups: vscode.TreeItem[] = [];
+    async getDeploymentGroupsTreeItems(): Promise<TreeItem[]> {
+
+        const deploymentGps: TreeItem[] = [];
+        const response = await AWSClient.executeAsync(Service.CodeDeploy, "listDeploymentGroups", {
+            applicationName: config.get("applicationName")
+        });
 
         if (response.deploymentGroups.length > 0) {
-            response.deploymentGroups.forEach(deploymentGroup => {
-                let treeItem: vscode.TreeItem = new vscode.TreeItem(deploymentGroup, vscode.TreeItemCollapsibleState.Collapsed);
+            response.deploymentGroups.forEach((deploymentGroup) => {
+                const treeItem: TreeItem = new TreeItem(deploymentGroup, TreeItemCollapsibleState.Collapsed);
                 treeItem.contextValue = "deploymentGroup";
 
-                deploymentGroups.push(treeItem);
+                deploymentGps.push(treeItem);
             });
-            return deploymentGroups;
+            return deploymentGps;
         }
         else {
-            let createDeploymentHint: vscode.TreeItem = new vscode.TreeItem("-> Create Deployment Group", vscode.TreeItemCollapsibleState.None);
-            createDeploymentHint.command = {
+            const createDGpHint: TreeItem = new TreeItem("-> Create Deployment Group", TreeItemCollapsibleState.None);
+            createDGpHint.command = {
                 command: "cdExplorer.createDeploymentGroup",
                 title: "Create Deploment Group"
             };
-            return [createDeploymentHint];
+            return [createDGpHint];
         }
     }
 
-    /**
-     * Add EC2 Tag Filter
-     */
-    async addEC2Tag(deploymentGroupName: string) {
+    async listEC2TagFilters(deploymentGroup: string) {
 
-        let dialog: Dialog = new Dialog();
+        const dg = (await this.getDeploymentGroup(deploymentGroup)).Data;
+        const tagFilters: TreeItem[] = [];
 
-        dialog.addPrompt("tagName", async () => { return await vscode.window.showInputBox({ prompt: "Enter EC2 Tag Filter Name:", ignoreFocusOut: true }) });
-        dialog.addPrompt("tagValue", async () => { return await vscode.window.showInputBox({ prompt: "Enter EC2 Tag Filter Value:", ignoreFocusOut: true }) });
-
-        await dialog.run();
-
-        if (!dialog.cancelled) {
-
-            this.initClient();
-
-            let dg: CDDeploymentGroup = await this.getDeploymentGroup(deploymentGroupName);
-            let existingFilters = dg.Data.ec2TagFilters ? dg.Data.ec2TagFilters : [];
-
-            let tag = {
-                Key: dialog.getResponse("tagName"),
-                Value: dialog.getResponse("tagValue"),
-                Type: "KEY_AND_VALUE"
-            }
-
-            existingFilters.push(tag);
-
-            let params = {
-                ec2TagFilters: existingFilters,
-                applicationName: this.config.get("applicationName"),
-                currentDeploymentGroupName: deploymentGroupName
-            }
-
-            return await vscode.window.withProgress(
-                {
-                    cancellable: false,
-                    location: vscode.ProgressLocation.Notification,
-                    title: `Adding EC2 Tag Filter ${tag.Key} to ${deploymentGroupName}`
-                }, async (progress, token) => {
-
-                    let response = await this.codedeploy.updateDeploymentGroup(params).promise();
-                    console.log(`EC2 Tag Filter ${tag.Key} added to ${deploymentGroupName}`);
-                    return response;
-                });
-        }
-    }
-
-    async listEC2TagFilters(deploymentGroupName: string) {
-
-        let dg = await this.getDeploymentGroup(deploymentGroupName);
-
-        let tagFilters: vscode.TreeItem[] = [];
-
-        // TODO: Check if ec2TagSet/ec2TagFilters is undefined
-        if (dg.Data.ec2TagFilters) {
-            dg.Data.ec2TagFilters.forEach(ec2Tag => {
-                let treeItem = new vscode.TreeItem(`${ec2Tag.Key}=${ec2Tag.Value}`, vscode.TreeItemCollapsibleState.None);
+        if (dg.ec2TagFilters) {
+            dg.ec2TagFilters.forEach((ec2Tag) => {
+                const treeItem = new TreeItem(`${ec2Tag.Key}=${ec2Tag.Value}`, TreeItemCollapsibleState.None);
 
                 treeItem.iconPath = TreeItemIcons.EC2Tag;
-
-                treeItem.contextValue = `ec2TagFilter_${deploymentGroupName}`;
-                treeItem.id = `${deploymentGroupName}_${ec2Tag.Key}`;
+                treeItem.contextValue = `ec2TagFilter_${deploymentGroup}`;
+                treeItem.id = `${deploymentGroup}_${ec2Tag.Key}`;
 
                 tagFilters.push(treeItem);
             });
         }
-        else if (dg.Data.ec2TagSet) {
+        else if (dg.ec2TagSet) {
+            dg.ec2TagSet.ec2TagSetList.forEach((ec2TagList) => {
 
-            dg.Data.ec2TagSet.ec2TagSetList.forEach(ec2TagList => {
-
-                ec2TagList.forEach(ec2Tag => {
-
-                    let treeItem = new vscode.TreeItem(`${ec2Tag.Key}=${ec2Tag.Value}`, vscode.TreeItemCollapsibleState.None);
+                ec2TagList.forEach((ec2Tag) => {
+                    const treeItem = new TreeItem(`${ec2Tag.Key}=${ec2Tag.Value}`, TreeItemCollapsibleState.None);
 
                     treeItem.iconPath = TreeItemIcons.EC2Tag;
-
-                    treeItem.contextValue = `ec2TagFilter_${deploymentGroupName}`;
-                    treeItem.id = `${deploymentGroupName}_${ec2Tag.Key}`;
+                    treeItem.contextValue = `ec2TagFilter_${deploymentGroup}`;
+                    treeItem.id = `${deploymentGroup}_${ec2Tag.Key}`;
 
                     tagFilters.push(treeItem);
                 });
@@ -760,229 +483,163 @@ export class CodeDeployUtil {
         return tagFilters;
     }
 
-    async deleteEC2TagFilter(ec2TagKey: string, deploymentGroupName: string) {
+    async getApplicationPickItems() {
 
-        this.initClient();
+        const quickPickItems: QuickPickItem[] = [];
 
-        let dg = await this.getDeploymentGroup(deploymentGroupName);
-        let updateResponse;
-        let params;
-
-        if (dg.Data.ec2TagFilters) {
-            // Update ec2TagFilters
-            let ec2TagFilters = dg.Data.ec2TagFilters.filter((dg) => { return dg.Key != ec2TagKey });
-
-            params = {
-                ec2TagFilters: ec2TagFilters,
-                currentDeploymentGroupName: deploymentGroupName,
-                applicationName: this.config.get("applicationName")
-            }
-        }
-        else if (dg.Data.ec2TagSet) {
-
-            // Update ec2TagSet
-            let ec2TagSet = { ec2TagSetList: [] };
-            dg.Data.ec2TagSet.ec2TagSetList.forEach(ec2TagList => {
-                let _ec2TagList = ec2TagList.filter((dg) => { return dg.Key != ec2TagKey });
-                if (_ec2TagList.length > 0) {
-                    ec2TagSet.ec2TagSetList.push(_ec2TagList);
-                }
-            });
-
-            params = {
-                ec2TagSet: ec2TagSet,
-                currentDeploymentGroupName: deploymentGroupName,
-                applicationName: this.config.get("applicationName")
-            }
-        }
-
-        await vscode.window.withProgress(
-            {
-                cancellable: false,
-                title: `Deleting ${deploymentGroupName} EC2 Tag Filter ${ec2TagKey}`,
-                location: vscode.ProgressLocation.Notification
-            }, async (progress, token) => {
-
-                return updateResponse = await this.codedeploy.updateDeploymentGroup(params).promise();
-            }
-
-        )
-
-        // TODO: Check UpdateResponse for success
-        if (updateResponse) {
-            console.log(`Deleted ${deploymentGroupName} EC2 Tag Filter ${ec2TagKey}`);
-        }
-    }
-
-    async removeASG(autoscalingGroupName: string, deploymentGroupName: string) {
-
-        this.initClient();
-
-        let dg = await this.getDeploymentGroup(deploymentGroupName);
-        let updateResponse;
-
-        if (dg.Data.autoScalingGroups) {
-
-            let autoScalingGroups = dg.Data.autoScalingGroups.filter((asg) => { return asg.name != autoscalingGroupName });
-            let _autoScalingGroups = [];
-            autoScalingGroups.forEach(asg => {
-                _autoScalingGroups.push(asg.name);
-            });
-
-            let params = {
-                autoScalingGroups: _autoScalingGroups,
-                currentDeploymentGroupName: deploymentGroupName,
-                applicationName: this.config.get("applicationName")
-            }
-
-            return vscode.window.withProgress(
-                {
-                    cancellable: false,
-                    title: `Removing  Deployment Group: \'${deploymentGroupName}\' ASG ${autoscalingGroupName}`,
-                    location: vscode.ProgressLocation.Notification
-                }, async (progress, token) => {
-                    return updateResponse = await this.codedeploy.updateDeploymentGroup(params).promise();
-                }
-            )
-        }
-
-        // TODO: Check UpdateResponse for success
-        if (updateResponse) {
-            console.log(`Successfully removed ${deploymentGroupName} AutoScaling Group ${autoscalingGroupName}`);
-        }
-    }
-
-    /**
-     * Add ASG to Deployment Group
-     */
-    async addASG(deploymentGroupName: string) {
-
-        let asgUtil = new AutoScalingUtil();
-        let asgQuickPickItems = await asgUtil.getAsgsAsQuickPickItems();
-        let asgs = await vscode.window.showQuickPick(asgQuickPickItems, {
-            placeHolder: asgQuickPickItems.length > 0 ? "Select AutoScaling Groups:" : `No AutoScaling Groups found in ${this.config.get("region")}`,
-            canPickMany: true,
-            ignoreFocusOut: true
-        })
-
-        if (asgs.length > 0) {
-
-            let autoScalingGroups = [];
-            asgs.forEach(item => {
-                autoScalingGroups.push(item.label);
-            });
-
-            this.initClient();
-
-            let dg: CDDeploymentGroup = await this.getDeploymentGroup(deploymentGroupName);
-
-            let params = {
-                autoScalingGroups: autoScalingGroups,
-                applicationName: this.config.get("applicationName"),
-                currentDeploymentGroupName: deploymentGroupName
-            }
-
-            return vscode.window.withProgress({
-                cancellable: false,
-                location: vscode.ProgressLocation.Notification,
-                title: `Adding ASG(s) to Deployment Group ${deploymentGroupName}`
-            },
-                async (progress, token) => {
-                    let updateresponse = await this.codedeploy.updateDeploymentGroup(params).promise();
-                    console.log(`ASG(s) added to Deployment Group ${deploymentGroupName}`);
-                    return updateresponse;
-                }
-            )
-        }
-    }
-
-    async getApplicationsAsQuickPickItems() {
-
-        this.initClient();
-        let quickPickItems: QuickPickItem[] = [];
-
-        await vscode.window.withProgress({
+        await window.withProgress({
             cancellable: false,
-            location: vscode.ProgressLocation.Notification,
-            title: `Fetching CodeDeploy Applications in ${this.config.get("region")}`
-        }, async (progress, token) => {
+            location: ProgressLocation.Notification,
+            title: localize(`Fetching CodeDeploy Applications in ${config.get("region")}`)
+        }, async () => {
 
-            let listResponse = await this.codedeploy.listApplications({}).promise();
+            const listResponse = await AWSClient.executeAsync(Service.CodeDeploy, "listApplications", {});
 
             if (listResponse.applications) {
 
                 if (listResponse.applications.length > 0) {
-                    let batchResponse = await this.codedeploy.batchGetApplications({ applicationNames: listResponse.applications }).promise();
+                    const batchResponse = await AWSClient.executeAsync(Service.CodeDeploy, "batchGetApplications", { applicationNames: listResponse.applications });
 
-                    batchResponse.applicationsInfo.forEach(appInfo => {
+                    batchResponse.applicationsInfo.forEach((appInfo) => {
                         // Limited to CodeDeploy EC2
-                        if (appInfo.computePlatform == "Server") {
-                            let item: QuickPickItem = new QuickPickItem(appInfo.applicationName, "");
-                            quickPickItems.push(item);
+                        if (appInfo.computePlatform === "Server") {
+                            quickPickItems.push(
+                                new QuickPickItem({
+                                    label: appInfo.applicationName,
+                                    description: ""
+                                })
+                            );
                         }
                     });
                 }
             }
         });
+
         return quickPickItems;
     }
 
-    async getAutoScalingGroups(deploymentGroupName: string): Promise<vscode.TreeItem[]> {
+    async getAutoScalingGroups(deploymentGroup: string): Promise<TreeItem[]> {
 
-        let dg = await this.getDeploymentGroup(deploymentGroupName);
-        let asgs = [];
+        const asgs: TreeItem[] = [];
+        const dg = await this.getDeploymentGroup(deploymentGroup);
 
-        dg.Data.autoScalingGroups.forEach(asg => {
-            let treeItem = new vscode.TreeItem(asg.name, vscode.TreeItemCollapsibleState.None)
-            treeItem.contextValue = `autoscaling_${deploymentGroupName}`;
-            asgs.push(treeItem)
+        dg.Data.autoScalingGroups.forEach((asg) => {
+            const treeItem = new TreeItem(asg.name, TreeItemCollapsibleState.None);
+            treeItem.contextValue = `autoscaling_${deploymentGroup}`;
+            asgs.push(treeItem);
         });
 
         return asgs;
-    }
-
-    async stopDeployment(deploymentId: string) {
-
-        this.initClient();
-
-        let params = {
-            deploymentId: deploymentId
-        };
-
-        await vscode.window.withProgress({
-            cancellable: false,
-            location: vscode.ProgressLocation.Window,
-            title: `Stopping dpeloyment ${deploymentId}`
-        }, async (progress, token) => {
-
-            let response = await this.codedeploy.stopDeployment(params).promise();
-            if (response.Status == "Succeeded") {
-                console.log(`Stopped Deployment ${deploymentId}`);
-            }
-
-            return response;
-        })
     }
 
     /**
     * Retrieve TreeItems for Application contextValues
     */
     getApplicationTreeItems() {
+        try {
+            return [TreeItemUtil.TreeItem({
+                label: "Deployment Groups",
+                contextValue: "deploymentGroups"
+            })];
 
-        let treeItems: vscode.TreeItem[] = [];
+        } catch (error) {
+            window.showErrorMessage(error.message, {});
+        }
+    }
 
-        let labels = [
-            {
-                "label": "Deployment Groups",
-                "contextValue": "deploymentGroups"
-            }
-        ];
+    /**
+     * Retrieve DeploymentConfigurations
+     */
+    async getDeploymentConfigurations(): Promise<QuickPickItem[]> {
+        try {
+            const deploymentConfigurations: QuickPickItem[] = [];
+            const response = await AWSClient.executeAsync(Service.CodeDeploy, "listDeploymentConfigs", {});
 
-        labels.forEach(element => {
-            let treeItem = TreeItemUtil.addCollapsedItem(element.label, element.contextValue);
-            treeItems.push(treeItem);
-        });
+            response.deploymentConfigsList.forEach((deploymentConfiguration) => {
+                deploymentConfigurations.push(new QuickPickItem({
+                    label: deploymentConfiguration,
+                    description: ""
+                }));
+            });
 
-        return treeItems;
+            return deploymentConfigurations;
+
+        } catch (error) {
+            window.showErrorMessage(error.message, {});
+        }
+    }
+
+    async getBGConfiguration(deploymentGroup: string): Promise<TreeItem[]> {
+        const dg = (await this.getDeploymentGroup(deploymentGroup)).Data;
+
+        if (dg.blueGreenDeploymentConfiguration) {
+            const props: TreeItem[] = [];
+            const bg = dg.blueGreenDeploymentConfiguration;
+
+            props.push(
+                TreeItemUtil.TreeItem({
+                    label: `Action On Timeout=${bg.deploymentReadyOption.actionOnTimeout}`,
+                    contextValue: "actionOnTimeout"
+                }),
+                TreeItemUtil.TreeItem({
+                    label: `Wait Time(Minutes)=${bg.deploymentReadyOption.waitTimeInMinutes}`,
+                    contextValue: "waitTimeInMinutes"
+                }),
+                TreeItemUtil.TreeItem({
+                    label: `Green Fleet Provisioning Option=${bg.greenFleetProvisioningOption.action}`,
+                    contextValue: "action"
+                }),
+                TreeItemUtil.TreeItem({
+                    label: `Terminate On Deployment Success=${bg.terminateBlueInstancesOnDeploymentSuccess.action}`,
+                    contextValue: "action"
+                }),
+                TreeItemUtil.TreeItem({
+                    label: `Termination Wait Time(Minutes)=${bg.terminateBlueInstancesOnDeploymentSuccess.terminationWaitTimeInMinutes}`,
+                    contextValue: "terminationWaitTimeInMinutes"
+                }),
+            );
+            props.forEach((prop) => {
+                prop.iconPath = new ThemeIcon("symbol-constant");
+                prop.collapsibleState = TreeItemCollapsibleState.None;
+            });
+
+            return props;
+        }
+    }
+
+    async createApplication(params: {}) {
+        return await AWSClient.executeAsync(Service.CodeDeploy, "createApplication", params);
+    }
+
+    async deleteApplication(params: {}) {
+        return await AWSClient.executeAsync(Service.CodeDeploy, "deleteApplication", params);
+    }
+
+    async createDeployment(params: {}) {
+        return await AWSClient.executeAsync(Service.CodeDeploy, "createDeployment", params);
+    }
+
+    async waitForDeployment(params: {}, callback: any) {
+        return await AWSClient.waitForAsync(Service.CodeDeploy, "deploymentSuccessful", params, callback);
+    }
+
+    async stopDeployment(params: {}) {
+        return await AWSClient.executeAsync(Service.CodeDeploy, "stopDeployment", params);
+    }
+
+    async createDeploymentGroup(params: {}) {
+        return await AWSClient.executeAsync(Service.CodeDeploy, "createDeploymentGroup", params);
+    }
+
+    async deleteDeploymentGroup(params: {}) {
+        return await AWSClient.executeAsync(Service.CodeDeploy, "deleteDeploymentGroup", params);
+    }
+
+    async execute(operation: string, params: {}) {
+        return await AWSClient.executeAsync(Service.CodeDeploy, operation, params);
+    }
+
+    async updateDeploymentGroup(params: any) {
+        return await AWSClient.executeAsync(Service.CodeDeploy, "updateDeploymentGroup", params);
     }
 }

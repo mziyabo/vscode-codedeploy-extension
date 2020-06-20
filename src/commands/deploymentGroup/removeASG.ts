@@ -1,19 +1,47 @@
-import * as vscode from 'vscode';
-import { CDExtension } from '../commands';
 
-export async function removeASG(node: vscode.TreeItem) {
+import { config } from '../../shared/config';
+import { CodeDeployUtil } from '../../shared/aws/codedeploy';
+import { TreeItem, ProgressLocation, commands, window } from 'vscode';
 
-    let extension = new CDExtension();
+/**
+ * Remove Autoscaling Group from Deployment Group
+ * @param node Autoscaling Group Node
+ */
+export async function removeASG(node: TreeItem) {
 
-    let autoScalingGroupName;
+    const codedeploy = new CodeDeployUtil();
+    let autoscalingGroupName;
     let deploymentGroupName;
 
-    if (node) {
-        autoScalingGroupName = node.label;
-        deploymentGroupName = node.contextValue.substr(12, node.contextValue.length);
+    try {
+        if (node) {
+            autoscalingGroupName = node.label;
+            deploymentGroupName = node.contextValue.substr(node.contextValue.indexOf('_') + 1, node.contextValue.length);
 
-        await extension.cdUtil.removeASG(autoScalingGroupName, deploymentGroupName);
+            const dg = await codedeploy.getDeploymentGroup(deploymentGroupName);
 
-        vscode.commands.executeCommand("cdExplorer.refresh");
+            if (dg.Data?.autoScalingGroups) {
+                const autoScalingGroups = dg.Data.autoScalingGroups.filter((asg) => { return asg.name !== autoscalingGroupName; });
+
+                const params = {
+                    autoScalingGroups: autoScalingGroups.map((asg) => { return asg.name; }),
+                    currentDeploymentGroupName: deploymentGroupName,
+                    applicationName: config.get("applicationName")
+                };
+
+                return window.withProgress(
+                    {
+                        cancellable: false,
+                        title: `Removing  Deployment Group: \'${deploymentGroupName}\' ASG ${autoscalingGroupName}`,
+                        location: ProgressLocation.Notification
+                    }, async () => {
+                        await codedeploy.updateDeploymentGroup(params);
+                        commands.executeCommand("cdExplorer.refresh");
+                    }
+                );
+            }
+        }
+    } catch (error) {
+        window.showErrorMessage(error.message, {});
     }
 }

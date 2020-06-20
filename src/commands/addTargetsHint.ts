@@ -1,26 +1,34 @@
-import * as vscode from 'vscode';
-import { CDExtension } from './commands';
+import { addASG } from './deploymentGroup/addASG';
+import { addEC2Tag } from './deploymentGroup/addEC2Tag';
+import { commands, window } from 'vscode';
 
-export async function addTargetsHint(response) {
+/**
+ * Provides Hint via InformationMessage to add Deployment Targets
+ * @param deploymentGroup Deployment Group Name
+ */
+export async function addTargetsHint(deploymentGroup) {
 
-    let extension = new CDExtension();
-    if (response) {
-        vscode.commands.executeCommand("cdExplorer.refresh");
-        if (response.deploymentGroupName) {
+    try {
+        if (deploymentGroup) {
+            commands.executeCommand("cdExplorer.refresh");
+            if (deploymentGroup) {
+                const hintResponse = await window.showInformationMessage(`Add targets for ${deploymentGroup.deploymentGroupName}`, "Add AutoScaling Group", "Add EC2 Tag Filters", "Not Now");
 
-            let hintResponse = await vscode.window.showInformationMessage(`Add targets for ${response.deploymentGroupName}`, "Add AutoScaling Group", "Add EC2 Tag Filters", "Not Now")
+                switch (hintResponse) {
 
-            switch (hintResponse) {
-                case "Add AutoScaling Group":
-                    extension.cdUtil.addASG(response.deploymentGroupName);
-                    vscode.commands.executeCommand("cdExplorer.refresh");
-                    break;
+                    case "Add AutoScaling Group":
+                        addASG(deploymentGroup);
+                        commands.executeCommand("cdExplorer.refresh");
+                        break;
 
-                case "Add EC2 Tag Filters":
-                    extension.cdUtil.addEC2Tag(response.deploymentGroupName);
-                    vscode.commands.executeCommand("cdExplorer.refresh");
-                    break;
+                    case "Add EC2 Tag Filters":
+                        addEC2Tag(deploymentGroup);
+                        commands.executeCommand("cdExplorer.refresh");
+                        break;
+                }
             }
         }
+    } catch (error) {
+        window.showErrorMessage(error.message, {});
     }
 }

@@ -1,0 +1,12 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\src",
+    "\\src\\commands",
+    "\\src\\commands\\application",
+    "\\src\\shared",
+    "\\src\\shared\\ui"
+  ],
+  "SelectedNode": "\\src\\commands\\application\\addExistingApplication.ts",
+  "PreviewInSolutionExplorer": false
+}

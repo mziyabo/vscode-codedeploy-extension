@@ -1,11 +1,11 @@
 {
     "cdExplorer.openConsole.title": "Open in AWS Console",
     "cdExplorer.createApplication.title": "Create Application",
-    "cdExplorer.selectExisting.title": "Add Existing Application",
+    "cdExplorer.selectExisting.title": "Link Existing Application",
     "cdExplorer.unlinkWorkspace.title": "Unlink Workspace",
     "cdExplorer.deployApplication.title": "Deploy Application",
     "cdExplorer.stopDeployment.title": "Stop Deployment",
-    "cdExplorer.viewDeployment.title": "View Deployment Details",
+    "cdExplorer.viewDeployment.title": "View Details",
     "cdExplorer.deleteApplication.title": "Delete Application",
     "cdExplorer.configureRevisionLocation.title": "Configure Revision Locations",
     "cdExplorer.addEC2Tag.title": "Create EC2 Tag Filter",
@@ -13,14 +13,21 @@
     "cdExplorer.deleteASG.title": "Remove AutoScaling Group",
     "cdExplorer.addASG.title": "Add AutoScaling Group",
     "cdExplorer.createDeploymentGroup.title": "Create Deployment Group",
+    "cdExplorer.editDeploymentGroup.title": "Edit Deployment Group",
+    "cdExplorer.configureBGDeployment.title": "Configure Blue/Green Options",
     "cdExplorer.deleteDeploymentGroup.title": "Delete Deployment Group",
     "cdExplorer.createDeployment.title": "Create Deployment Group",
+    "cdExplorer.showDeploymentWebView.title": "Track Deployment",
+    "cdExplorer.addLoadBalancerInfo.title": "Edit Load Balancer Info",
+    "cdExplorer.removeELB.title": "Remove LoadBalancer",
+    "cdExplorer.viewDeploymentGroup.title": "View Details",
+    "codedeploy.maximumDeployments.description":"Maximum number of deployments displayed",
     "cdExplorer.command.category": "AWS CodeDeploy",
     "codedeploy.region.description": "AWS Region",
     "codedeploy.applicationName.title": "CodeDeploy Application Name",
     "codedeploy.revisionBucket.description": "CodeDeploy Revision Bucket",
     "codedeploy.revisionLocalDirectory.description": "CodeDeploy Revision Local Directory",
     "codedeploy.isApplicationWorkspace.description": "Workspace Linked to CodeDeploy Application",
-    "codedeploy.enableAwsLogging.description": "Enable AWS SDK Logging"
-    
+    "codedeploy.enableAwsLogging.description": "Enable AWS SDK Logging",
+    "codedeploy.dialog.promptRevisionName": "Enter Revision Name:"
 }
