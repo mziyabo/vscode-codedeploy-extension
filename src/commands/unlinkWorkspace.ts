@@ -11,7 +11,7 @@ export async function unlinkWorkspace() {
             "deploymentGroupName",
             "revisionBucket",
             "revisionLocalDirectory",
-            //"isApplicationWorkspace",
+            // "isApplicationWorkspace",
             "applicationName",
             "region",
         ];

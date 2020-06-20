@@ -59,9 +59,6 @@ export class CodeDeployTreeDataProvider implements TreeDataProvider<TreeItem> {
                         case "loadBalancer":
                             deploymentGroup = element.id.substr(element.id.indexOf('_') + 1, element.id.length);
                             return codedeploy.getLoadBalancerInfo(deploymentGroup);
-                        // case "blueGreen":
-                        //     deploymentGroup = element.id.substr(element.id.indexOf('_') + 1, element.id.length);
-                        //     return codedeploy.getBGConfiguration(deploymentGroup);
 
                         default:
                             break;
