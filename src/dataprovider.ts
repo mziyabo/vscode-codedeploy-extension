@@ -1,90 +1,84 @@
-import * as vscode from 'vscode';
-import { CDApplication } from "./shared/models/cdmodels";
+import { ProgressLocation, window, TreeDataProvider, TreeItem, EventEmitter, workspace, Event } from 'vscode';
 import { CodeDeployUtil } from './shared/aws/codedeploy';
+import { config } from './shared/config';
+import { CDApplication } from "./shared/models/cdmodels";
 
-export class CodeDeployTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
+/**
+ * AWS CodeDeploy TreeDataProvider
+ */
+export class CodeDeployTreeDataProvider implements TreeDataProvider<TreeItem> {
 
-    private _onDidChangeTreeData: vscode.EventEmitter<CDApplication | undefined> = new vscode.EventEmitter<CDApplication | undefined>();
-    readonly onDidChangeTreeData: vscode.Event<CDApplication | undefined> = this._onDidChangeTreeData.event;
+    private _onDidChangeTreeData: EventEmitter<CDApplication | undefined> = new EventEmitter<CDApplication | undefined>();
+    readonly onDidChangeTreeData: Event<CDApplication | undefined> = this._onDidChangeTreeData.event;
 
-    public cdUtil: CodeDeployUtil;
-    private config: vscode.WorkspaceConfiguration;
-
-    constructor() {
-        this.cdUtil = new CodeDeployUtil();
-        this.config = vscode.workspace.getConfiguration("codedeploy");
-    }
-
-    async getTreeItem(element: vscode.TreeItem): Promise<vscode.TreeItem> {
+    async getTreeItem(element: TreeItem): Promise<TreeItem> {
         return element;
     }
 
-    async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
+    async getChildren(element?: TreeItem): Promise<TreeItem[]> {
 
-        if (!vscode.workspace.workspaceFolders)
-            return;
+        if (workspace.workspaceFolders) {
 
-        this.config = vscode.workspace.getConfiguration("codedeploy");
+            if (config.get("applicationName")) {
+                await config.update("isApplicationWorkspace", true);
+                const codedeploy = new CodeDeployUtil();
 
-        if (!this.config.get("applicationName")) {
+                if (element) {
+                    let deploymentGroup: string;
+                    const contextValue = element.contextValue;
 
-            if (this.config.get("isApplicationWorkspace")) {
-                await this.config.update("isApplicationWorkspace", undefined);
+                    switch (contextValue) {
+                        case "application":
+                            return codedeploy.getApplicationTreeItems();
+
+                        case "deploymentGroups":
+                            return await codedeploy.getDeploymentGroupsTreeItems();
+
+                        case "deploymentGroup":
+                            return codedeploy.getDeploymentGroupTreeItem(element.label);
+
+                        case "dgSettings":
+                            deploymentGroup = element.id.substr(element.id.indexOf('_') + 1, element.id.length);
+                            return codedeploy.getDeploymentGroupSettings(deploymentGroup);
+
+                        case "deployments":
+                            deploymentGroup = element.id.substr(element.id.indexOf('_') + 1, element.id.length);
+                            return codedeploy.getDeployments(deploymentGroup);
+
+                        case "deployment":
+                            return codedeploy.getDeploymentTargetTreeItems(element.label);
+
+                        case "ec2TagFilters":
+                            deploymentGroup = element.id.substr(element.id.indexOf('_') + 1, element.id.length);
+                            return codedeploy.listEC2TagFilters(deploymentGroup);
+
+                        case "autoScalingGroups":
+                            deploymentGroup = element.id.substr(element.id.indexOf('_') + 1, element.id.length);
+                            return codedeploy.getAutoScalingGroups(deploymentGroup);
+
+                        case "loadBalancer":
+                            deploymentGroup = element.id.substr(element.id.indexOf('_') + 1, element.id.length);
+                            return codedeploy.getLoadBalancerInfo(deploymentGroup);
+
+                        default:
+                            break;
+                    }
+                }
+                else {
+                    return window.withProgress({
+                        cancellable: false,
+                        location: ProgressLocation.Window,
+                        title: "Retrieving CodeDeploy Application"
+                    },
+                        async () => {
+                            return [await codedeploy.getApplication()];
+                        });
+                }
             }
-
-            return;
-        }
-
-        await this.config.update("isApplicationWorkspace", true);
-
-        if (element) {
-
-            let deploymentGroup: string;
-            let contextValue = element.contextValue;
-
-            switch (contextValue) {
-                case "application":
-                    return this.cdUtil.getApplicationTreeItems();
-
-                case "deploymentGroups":
-                    return await this.cdUtil.getDeploymentGroupsTreeItems();
-
-                case "deploymentGroup":
-                    return this.cdUtil.getDeploymentGroupTreeItem(element.label);
-
-                case "deployments":
-                    deploymentGroup = element.id.substr(20, element.id.length);
-                    return this.cdUtil.getDeployments(deploymentGroup);
-
-                case "deployment":
-                    return this.cdUtil.getDeploymentTargetTreeItems(element.label);
-
-                case "ec2TagFilters":
-                    deploymentGroup = element.id.substr(15, element.id.length);
-                    return this.cdUtil.listEC2TagFilters(deploymentGroup);
-
-                case "autoScalingGroups":
-                    deploymentGroup = element.id.substr(12, element.id.length)
-                    return this.cdUtil.getAutoScalingGroups(deploymentGroup);
-
-                default:
-                    break;
-            }
-        }
-        else {
-            return vscode.window.withProgress({
-                cancellable: false,
-                location: vscode.ProgressLocation.Window,
-                title: "Retrieving CodeDeploy Application"
-            },
-                async (progress, token) => {
-                    return [await this.cdUtil.getApplication()]
-                });
         }
     }
 
     refresh(): void {
         this._onDidChangeTreeData.fire();
     }
-
 }

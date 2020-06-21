@@ -1,51 +1,95 @@
-
+/**
+ * Executes multiple input(QuickPickItem, InputBox) prompts in sequence
+ */
 export class Dialog {
 
+    title: string;
     prompts: Prompt[];
     responses: Prompt[];
     cancelled: boolean;
 
-    constructor() {
+    constructor(title?: string) {
         this.prompts = [];
         this.responses = [];
-        this.cancelled = undefined;
+        this.cancelled = false;
+        this.title = title;
     }
 
     addPrompt(name: string, promptFunction: () => any) {
-        let prompt: Prompt = new Prompt(name, promptFunction);
+        const prompt: Prompt = new Prompt(name, promptFunction);
+        prompt.dialog = this;
         this.prompts.push(prompt);
     }
 
     async run() {
-        this.cancelled = false;
-        for (let i: number = 0; i < this.prompts.length; i++) {
-            let response = await this.prompts[i].fire();
+        // previous Holds index in case user goes back to a Skipped Prompt, we'd need to Skip that too
+        let previous = 0;
+        let i = 0;
+        while (i < this.prompts.length) {
 
-            if (!response) {
+            const prompt = this.prompts[i];
+            const response = await prompt.fire();
+
+            if (!response || response === PromptAction[PromptAction.KillDialog]) {
                 this.cancelled = true;
                 break;
             }
+            else if (response === PromptAction[PromptAction.MoveNext]) {
+                // TODO: Requires classes to check for nulls now :/
+                if (i < previous) {
+                    previous = i;
+                    i--;
+                } else {
+                    prompt.response = null;
+                    this.responses.push(prompt);
+                    i++;
+                }
+            }
+            else if (response === PromptAction[PromptAction.MovePrevious]) {
+                previous = i;
+                i--;
+            }
             else {
-                let p = this.prompts[i];
-                p.response = response;
-                this.responses.push(p);
+                prompt.response = response;
+                this.responses.push(prompt);
+                i++;
             }
         }
     }
 
     getResponse(name: string) {
-        let p = this.responses.find((prompt) => { return prompt.name == name });
-        if (p.response.hasOwnProperty("label")) {
-            // TODO: allow the entire QuickPickItem e.g. for ServiceRolesArns
-            return p.response.label;
+        // TODO: return the entire QuickPickItem e.g. for ServiceRolesArns
+        const prompt = this.responses.find((p) => { return p.name === name; });
+        if (prompt.response?.hasOwnProperty("label")) {
+            return prompt.response.label;
         }
 
-        return p.response;
+        return prompt.response;
     }
 }
 
+/**
+ * Action for prompt
+ */
+export enum PromptAction {
+    MoveNext,
+    KillDialog,
+    DoNothing,
+    MovePrevious
+}
+
+/**
+ * Prompt for user-input
+ */
 class Prompt {
+    /**
+     * Current dialog in which prompt is running
+     */
+    dialog: Dialog;
     promptFunction: Function;
+    /**
+     * Prompt response OR if prompt should Continue, Abort or Skip
+     */
     response: any;
     name: string;
 
@@ -54,6 +98,9 @@ class Prompt {
         this.promptFunction = promptFunction;
     }
 
+    /**
+     * Execute Prompt
+     */
     async fire() {
         this.response = await this.promptFunction.call(this);
         return this.response;

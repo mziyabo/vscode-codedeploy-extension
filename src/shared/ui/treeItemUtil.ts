@@ -1,13 +1,38 @@
-import * as vscode from "vscode";
+import { TreeItem, TreeItemCollapsibleState } from "vscode";
 import { TreeItemIcons } from "./icons";
 
+interface TreeItemOptions {
+    id?: string;
+    /**
+     *
+     */
+    tooltip?: string;
+    iconPath?: string | import("vscode").Uri | { light: string | import("vscode").Uri; dark: string | import("vscode").Uri } | import("vscode").ThemeIcon;
+    /**
+     * A human-readable string describing this item
+     */
+    label: string;
+    /**
+     * Context value of the tree item.
+     */
+    contextValue: string;
+    /**
+     * Collapsible state of the tree item
+     */
+    collapsibleState?: TreeItemCollapsibleState;
+    description?: string;
+}
+
+/**
+ * TreeItem Helper Class (WIP)
+ */
 export class TreeItemUtil {
 
-    static addProperty(key: string, value: string, contextValue: string = "", includeIcon: boolean = true): vscode.TreeItem {
+    static addProperty(key: string, value: string, contextValue: string = "", includeIcon: boolean = true): TreeItem {
 
-        let treeItem = new vscode.TreeItem(`${key}=${value}`, vscode.TreeItemCollapsibleState.None);
-
+        const treeItem = new TreeItem(`${key}=${value}`, TreeItemCollapsibleState.None);
         treeItem.contextValue = contextValue;
+
         if (includeIcon) {
             treeItem.iconPath = TreeItemIcons.Property;
         }
@@ -15,14 +40,18 @@ export class TreeItemUtil {
         return treeItem;
     }
 
-    static addCollapsedItem(label: string, contextValue: string, iconfsPath: string = ""): vscode.TreeItem {
+    static TreeItem(options: TreeItemOptions): TreeItem {
 
-        let treeItem = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
+        if (options.collapsibleState === undefined) {
+            options.collapsibleState = TreeItemCollapsibleState.Collapsed;
+        }
 
-        treeItem.contextValue = contextValue;
-        treeItem.iconPath = iconfsPath;
-
-        return treeItem;
+        const item = new TreeItem(options.label, options.collapsibleState);
+        item.description = options.description;
+        item.contextValue = options.contextValue;
+        item.id = options.id;
+        item.iconPath = options.iconPath;
+        item.tooltip = options.tooltip;
+        return item;
     }
-
 }

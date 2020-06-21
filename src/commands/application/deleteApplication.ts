@@ -1,13 +1,41 @@
-import * as vscode from 'vscode';
-import { CDExtension } from '../commands';
+import { window, ProgressLocation, TreeItem } from 'vscode';
 import { unlinkWorkspace } from "../unlinkWorkspace";
+import { CodeDeployUtil } from '../../shared/aws/codedeploy';
 
-export async function deleteApplication(node: vscode.TreeItem) {
-    // TODO: prompt/warn user of deletion
-    let extension = new CDExtension();
-    let response = await extension.cdUtil.deleteApplication(node.label);
+/**
+ * Delete CodeDeploy Application
+ * @param node Application Treeitem
+ */
+export async function deleteApplication(node: TreeItem) {
+    const codedeploy = new CodeDeployUtil();
+    const applicationName = node.label;
 
-    if (response) {
-        unlinkWorkspace();
+    try {
+
+        const confirmDelete = await window.showInformationMessage(`Are you sure you want to delete ${applicationName}?`, { modal: true }, "Delete");
+        if (confirmDelete === "Delete") {
+
+            const params = {
+                applicationName: applicationName
+            };
+
+            return await window.withProgress(
+                {
+                    cancellable: false,
+                    location: ProgressLocation.Notification,
+                    title: `Deleting Application ${applicationName}`
+                },
+                async () => {
+
+                    const response = await codedeploy.deleteApplication(params);
+                    if (response) {
+                        unlinkWorkspace();
+                        return response;
+                    }
+                }
+            );
+        }
+    } catch (error) {
+        window.showErrorMessage(error.message, {});
     }
 }

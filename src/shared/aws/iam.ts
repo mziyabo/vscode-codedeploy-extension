@@ -1,44 +1,31 @@
-let AWS = require('aws-sdk');
-import * as vscode from 'vscode'
-import { QuickPickItem } from '../ui/quickpickitem'
+import { QuickPickItem } from '../ui/input';
+import { AWSClient, Service } from './awsclient';
 
+/**
+ * Wraps AWS IAM Client
+ */
 export class IAMUtil {
-
-    private config: vscode.WorkspaceConfiguration;
-
-    constructor() {
-        this.config = vscode.workspace.getConfiguration("codedeploy");
-        if (this.config.get("enableAwsLogging")) {
-            AWS.config.logger = console;
-        }
-    }
 
     /**
      * Retrieve CodeDeploy Service Role
      */
     async listServiceRoles() {
-
-        let client = new AWS.IAM({
-            apiVersion: "2010-05-08"
-        });
-
-        let response = await client.listRoles({}).promise();
+        const response = await AWSClient.executeAsync(Service.IAM, "listRoles", {});
         return response;
     }
 
-    async getRolesAsQuickPickItems() {
+    async getRolesAsQuickPickItems(): Promise<QuickPickItem[]> {
 
-        // TODO: filter service roles by AssumeRoleDocument service
-        let listRoleResponse = await this.listServiceRoles();
-
-        let roles: vscode.QuickPickItem[] = [];
+        const listRoleResponse = await this.listServiceRoles();
+        const roles: QuickPickItem[] = [];
 
         if (listRoleResponse.Roles) {
-
-            listRoleResponse.Roles.forEach(role => {
-
-                let item = new QuickPickItem(role.Arn, role.Description)
-                roles.push(item);
+            listRoleResponse.Roles.forEach((role) => {
+                roles.push(
+                    new QuickPickItem({
+                        label: role.Arn,
+                        description: role.Description
+                    }));
             });
         }
 

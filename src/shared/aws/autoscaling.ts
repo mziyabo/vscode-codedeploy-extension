@@ -1,26 +1,23 @@
-let AWS = require("aws-sdk");
-import * as vscode from "vscode";
-import { QuickPickItem } from "../ui/quickpickitem";
+import { QuickPickItem } from "../ui/input";
+import { AWSClient, Service } from "./awsclient";
 
+/**
+ * Wraps AWS AutoScaling Client
+ */
 export class AutoScalingUtil {
 
-    private config: vscode.WorkspaceConfiguration;
+    async getASGQuickPickItems(): Promise<QuickPickItem[]> {
 
-    constructor() {
-        this.config = vscode.workspace.getConfiguration("codedeploy");
-        if (this.config.get("enableAwsLogging")) {
-            AWS.config.logger = console;
-        }
-    }
+        const asgs = await this.describeAutoScalingGroups();
+        const autoscalingGroups: QuickPickItem[] = [];
 
-    async getAsgsAsQuickPickItems(): Promise<QuickPickItem[]> {
-
-        let asgs: any[] = await this.describeAutoScalingGroups();
-        let autoscalingGroups: QuickPickItem[] = [];
-
-        asgs.forEach(asg => {
-            let item = new QuickPickItem(asg.AutoScalingGroupName, "");
-            autoscalingGroups.push(item);
+        asgs.forEach((asg) => {
+            autoscalingGroups.push(
+                new QuickPickItem({
+                    label: asg.AutoScalingGroupName,
+                    description: ""
+                })
+            );
         });
 
         return autoscalingGroups;
@@ -28,14 +25,7 @@ export class AutoScalingUtil {
 
     async describeAutoScalingGroups(): Promise<any[]> {
 
-        let client = new AWS.AutoScaling({
-            apiVersions: "2011-01-01",
-            region: this.config.get("region")
-        });
-
-        let response = await client.describeAutoScalingGroups({}).promise();
-
+        const response = await AWSClient.executeAsync(Service.AutoScaling, "describeAutoScalingGroups", {});
         return response.AutoScalingGroups;
     }
-
 }

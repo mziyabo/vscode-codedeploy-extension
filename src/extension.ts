@@ -1,19 +1,18 @@
 'use strict';
-import * as vscode from 'vscode';
 import { CDExtension } from './commands/commands';
+import { ExtensionContext, ProgressLocation, window } from 'vscode';
 
-export async function activate(context: vscode.ExtensionContext) {
-    vscode.window.withProgress({
+export async function activate(context: ExtensionContext) {
+
+    window.withProgress({
         cancellable: false,
-        title: "Activating AWS CodeDeploy extension",
-        location: vscode.ProgressLocation.Window
+        title: "Activating AWS CodeDeploy Extension",
+        location: ProgressLocation.Window
     },
         async (progress, token) => {
-
-            let cdExtension: CDExtension = new CDExtension();
-            cdExtension.Activate();
-        })
-
+            const extension = new CDExtension();
+            extension.activate();
+        });
 }
 
 export function deactivate() {

@@ -15,8 +15,8 @@ export class CDApplication extends vscode.TreeItem {
         _collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.Collapsed,
         public readonly command?: vscode.Command
     ) {
-        super(_label, _collapsibleState)
-        //TODO: initialize
+        super(_label, _collapsibleState);
+        // TODO: initialize
     }
 }
 
@@ -31,8 +31,8 @@ export class CDDeploymentGroup extends vscode.TreeItem {
         _collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.Collapsed,
         public readonly command?: vscode.Command
     ) {
-        super(_label, _collapsibleState)
-        //TODO: initialize
+        super(_label, _collapsibleState);
+        // TODO: initialize
     }
 }
 
@@ -46,7 +46,7 @@ export class CDDeployment extends vscode.TreeItem {
         _collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.Collapsed,
         public readonly command?: vscode.Command
     ) {
-        super(_label, _collapsibleState)
-        //TODO: initialize
+        super(_label, _collapsibleState);
+        // TODO: initialize
     }
 }
