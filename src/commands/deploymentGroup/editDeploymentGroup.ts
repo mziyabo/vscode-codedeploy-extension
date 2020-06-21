@@ -2,7 +2,6 @@ import { window, commands, TreeItem } from 'vscode';
 import { Dialog } from '../../shared/ui/dialog';
 import { AWSClient, Service } from '../../shared/aws/awsclient';
 import { DialogInput, QuickPickItem } from '../../shared/ui/input';
-import { CodeDeployUtil } from '../../shared/aws/codedeploy';
 import { config } from '../../shared/config';
 
 /**
@@ -37,10 +36,16 @@ export async function editDeploymentGroup(node: TreeItem) {
  */
 function editDialog(): Dialog {
     const dialog: Dialog = new Dialog("Edit Deployment Group");
-    const codedeploy = new CodeDeployUtil();
 
     dialog.addPrompt("deploymentConfigName", async () => {
-        return DialogInput.showQuickPick(await codedeploy.getDeploymentConfigurations(), {
+
+        const deploymentConfigs = [
+            new QuickPickItem({ label: "CodeDeployDefault.OneAtATime", description: "" }),
+            new QuickPickItem({ label: "CodeDeployDefault.HalfAtATime", description: "" }),
+            new QuickPickItem({ label: "CodeDeployDefault.AllAtOnce", description: "" })
+        ];
+
+        return DialogInput.showQuickPick(deploymentConfigs, {
             ignoreFocusOut: false,
             step: 1,
             title: dialog.title,
