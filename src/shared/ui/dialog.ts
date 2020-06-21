@@ -22,8 +22,8 @@ export class Dialog {
     }
 
     async run() {
-        // TODO: Remove below
-        // this.cancelled = false;
+        // previous Holds index in case user goes back to a Skipped Prompt, we'd need to Skip that too
+        let previous = 0;
         let i = 0;
         while (i < this.prompts.length) {
 
@@ -34,13 +34,19 @@ export class Dialog {
                 this.cancelled = true;
                 break;
             }
-            else if (response ===  PromptAction[PromptAction.MoveNext]) {
+            else if (response === PromptAction[PromptAction.MoveNext]) {
                 // TODO: Requires classes to check for nulls now :/
-                prompt.response = null;
-                this.responses.push(prompt);
-                i++;
+                if (i < previous) {
+                    previous = i;
+                    i--;
+                } else {
+                    prompt.response = null;
+                    this.responses.push(prompt);
+                    i++;
+                }
             }
-            else if (response ===  PromptAction[PromptAction.MovePrevious]) {
+            else if (response === PromptAction[PromptAction.MovePrevious]) {
+                previous = i;
                 i--;
             }
             else {
