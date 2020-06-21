@@ -3,6 +3,7 @@ import { Dialog, PromptAction } from '../../shared/ui/dialog';
 import { AWSClient, Service } from '../../shared/aws/awsclient';
 import { QuickPickItem, DialogInput } from '../../shared/ui/input';
 import { config } from '../../shared/config';
+import { AutoScalingUtil } from '../../shared/aws/autoscaling';
 
 export async function configureBGDeployment(node: TreeItem) {
     try {
@@ -27,8 +28,10 @@ export async function configureBGDeployment(node: TreeItem) {
                         action: dialog.getResponse("blueTerminateAction"),
                         terminationWaitTimeInMinutes: dialog.getResponse("terminationWaitTimeInMinutes")
                     }
-                }
+                },
+                autoScalingGroups: dialog.getResponse("asg") ? [dialog.getResponse("asg")] : []
             };
+
             AWSClient.executeAsync(Service.CodeDeploy, "updateDeploymentGroup", params);
             commands.executeCommand("cdExplorer.refresh");
         }
@@ -62,7 +65,7 @@ async function configureDialog(): Promise<Dialog> {
 
         const action = dialog.getResponse("actionOnTimeout");
         if (action !== "STOP_DEPLOYMENT") { return PromptAction[PromptAction.MoveNext]; }
-        return DialogInput.showInputBox("Enter Deployment Ready WaitTime (minutes)", {
+        return DialogInput.showInputBox("Enter Deployment Ready Wait Time(minutes)", {
             ignoreFocusOut: true,
             step: 2,
             title: dialog.title,
@@ -72,16 +75,30 @@ async function configureDialog(): Promise<Dialog> {
 
     dialog.addPrompt("greenFleetProvisioningOption", () => {
         const provisionOptions: QuickPickItem[] = [
-            new QuickPickItem({ label: "DISCOVER_EXISTING", description: "" }),
-            new QuickPickItem({ label: "COPY_AUTO_SCALING_GROUP", description: "" })
+            new QuickPickItem({ label: "DISCOVER_EXISTING", description: "- Use instances that already exist or will be created manually." }),
+            new QuickPickItem({ label: "COPY_AUTO_SCALING_GROUP", description: "- Use settings from a specified Auto Scaling group to define and create instances." })
         ];
 
         return DialogInput.showQuickPick(provisionOptions, {
-            ignoreFocusOut: false,
+            ignoreFocusOut: true,
             step: 3,
             title: dialog.title,
             totalSteps: dialog.prompts.length,
             placeHolder: "Select Green Fleet Provisioning Option"
+        });
+    });
+
+    dialog.addPrompt("asg", async () => {
+        if (dialog.getResponse("greenFleetProvisioningOption") !== "COPY_AUTO_SCALING_GROUP") { return PromptAction[PromptAction.MoveNext]; }
+        const autoscaling = new AutoScalingUtil();
+        const pickItems = await autoscaling.getASGQuickPickItems();
+        return DialogInput.showQuickPick(pickItems, {
+            step: 4,
+            title: dialog.title,
+            totalSteps: dialog.prompts.length,
+            placeHolder: pickItems.length > 0 ? "Select AutoScaling Groups:" : `No AutoScaling Groups found in ${config.get("region")}`,
+            ignoreFocusOut: true,
+            canPickMany: false,
         });
     });
 
@@ -93,7 +110,7 @@ async function configureDialog(): Promise<Dialog> {
 
         return DialogInput.showQuickPick(terminationOptions, {
             ignoreFocusOut: true,
-            step: 4,
+            step: 5,
             title: dialog.title,
             totalSteps: dialog.prompts.length,
             placeHolder: "Select Blue Fleet Termination Action OnDeploymentSuccess"
@@ -101,9 +118,9 @@ async function configureDialog(): Promise<Dialog> {
     });
 
     dialog.addPrompt("terminationWaitTimeInMinutes", () => {
-        return DialogInput.showInputBox("Enter Termination WaitTime (minutes)", {
-            ignoreFocusOut: false,
-            step: 5,
+        return DialogInput.showInputBox("Enter Termination Wait Time (minutes)", {
+            ignoreFocusOut: true,
+            step: 6,
             title: dialog.title,
             totalSteps: dialog.prompts.length
         });
