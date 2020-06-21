@@ -28,13 +28,13 @@
   "license": "Apache-2.0",
   "preview": true,
   "dependencies": {
-    "@types/node": "^13.5.0",
-    "@types/vscode": "^1.41.0",
     "adm-zip": "^0.4.14",
     "aws-sdk": "^2.610.0",
     "vscode-nls": "^4.1.2"
   },
   "devDependencies": {
+    "@types/node": "^13.5.0",
+    "@types/vscode": "^1.41.0",
     "@typescript-eslint/eslint-plugin": "^2.19.2",
     "@typescript-eslint/eslint-plugin-tslint": "2.19.2",
     "@typescript-eslint/parser": "^2.19.2",
@@ -492,7 +492,7 @@
     ]
   },
   "engines": {
-    "vscode": "^1.31.0"
+    "vscode": "^1.41.0"
   },
   "activationEvents": [
     "onView:explorer",

@@ -1,6 +1,6 @@
-## Upcoming
-- __Bug Fix__: Activate extension for Command Palette commands
+## 0.5.3 (2020-06-21)
 - __Optimization__: Scoped out unused AWS Clients - reducing package size from 4.5mb to 600kb
+- __Bug Fix__: Added activationEvents for Command Palette commands
 - __Improvement__: Added InProgress deployment tracking to status bar
 - __Improvement__: Added Inline treeview icons (createDeployment,)
 - __Improvement__: Multistep now includes steps/totalsteps for longer Dialogs

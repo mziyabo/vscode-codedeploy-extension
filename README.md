@@ -9,7 +9,7 @@ vscode [AWS CodeDeploy](https://docs.aws.amazon.com/codedeploy/latest/userguide/
 ![view](resources/marketplace/explorer.PNG)
 
 - Create CodeDeploy Application and/ Deployment Groups.
-- Deploy to CodeDeploy from a vscode working folder or project using S3 revision locations.
+- Deploy to CodeDeploy from a vscode Workspace using S3 revision locations.
 
 ## Installation
 1. Install aws-cli and [configure credentials](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html). Alternatively setup AWS Credentials from [Environment Variables](https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/loading-node-credentials-environment.html)
@@ -34,9 +34,8 @@ Click `Add AutoScaling Group` or `Add EC2 Tag Filter` in the notification window
  > Note to remove the workspace link to the CodeDeploy application run `AWS CodeDeploy: Unlink Workspace` from the Command Palette or the CodeDeploy Explorer.
 
 ## Extension Limitations
-- Limited to CodeDeploy to EC2, i.e. Support for Lambda and ECS not yet available
+- Limited to CodeDeploy to EC2 CodeDeploy
 - Supports S3 revision locations- GitHub currently not available 
-- Blue/Green Deployments not yet supported
 
 ## Release Notes
 This extension is still in preview and open to contribution.
