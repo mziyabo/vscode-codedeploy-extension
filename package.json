@@ -1,11 +1,7 @@
 {
   "name": "vscode-codedeploy",
   "displayName": "AWS CodeDeploy",
-<<<<<<< HEAD
-  "version": "0.5.2",
-=======
   "version": "0.5.3",
->>>>>>> development
   "description": "Deploy AWS CodeDeploy applications in vscode",
   "icon": "resources/marketplace/extension.png",
   "repository": {
