@@ -1,5 +1,5 @@
 # AWS CodeDeploy VS Code Extension
-![Build Status](https://travis-ci.org/mziyabo/vscode-codedeploy-extension.svg?branch=mainline) ![Marketplace Version](https://img.shields.io/vscode-marketplace/v/mziyabo.vscode-codedeploy.svg) ![Marketplace Downloads](https://img.shields.io/vscode-marketplace/i/mziyabo.vscode-codedeploy.svg)
+[![Build Status](https://travis-ci.org/mziyabo/vscode-codedeploy-extension.svg?branch=master)](https://travis-ci.org/mziyabo/vscode-codedeploy-extension) [![Marketplace Version](https://img.shields.io/vscode-marketplace/v/mziyabo.vscode-codedeploy.svg) ![Marketplace Downloads](https://img.shields.io/vscode-marketplace/i/mziyabo.vscode-codedeploy.svg)](https://marketplace.visualstudio.com/items?itemName=mziyabo.vscode-codedeploy&ssr=false#overview)
 
 vscode [AWS CodeDeploy](https://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) extension for deploying to EC2.
 
@@ -22,7 +22,7 @@ vscode [AWS CodeDeploy](https://docs.aws.amazon.com/codedeploy/latest/userguide/
 > Note: the following steps assume that you have a workspace already open.
 
 1. Open the Explorer ![Explorer](resources/marketplace/files.PNG) in the Activity Bar and then click the `AWS CodeDeploy` view.
-2. Choose either `Create Application` or `Add Existing Application` to a CodeDeploy link application with your workspace. 
+2. Choose either `Create Application` or `Add Existing Application` to associate a CodeDeploy application with your workspace. 
 3. Follow the on-screen prompts to add Application and Deployment Group.
 
 Click `Add AutoScaling Group` or `Add EC2 Tag Filter` in the notification window to associate the application with EC2 Targets
@@ -34,7 +34,7 @@ Click `Add AutoScaling Group` or `Add EC2 Tag Filter` in the notification window
  > Note to remove the workspace link to the CodeDeploy application run `AWS CodeDeploy: Unlink Workspace` from the Command Palette or the CodeDeploy Explorer.
 
 ## Extension Limitations
-- Limited to CodeDeploy to EC2 CodeDeploy
+- Limited to CodeDeploy to EC2
 - Supports S3 revision locations- GitHub currently not available 
 
 ## Release Notes
