@@ -1,3 +1,6 @@
+## 0.5.4 (2024-05-03)
+- __Security__: Bumped various packages to latest.
+
 ## 0.5.3 (2020-06-21)
 - __Optimization__: Scoped out unused AWS Clients - reducing package size from 4.5mb to 600kb
 - __Bug Fix__: Added activationEvents for Command Palette commands
