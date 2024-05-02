@@ -2,7 +2,7 @@
     "compilerOptions": {
         "rootDir": "src",
         "outDir": "out/src",
-        "module": "commonjs",
+        "module": "NodeNext",
         "moduleResolution": "NodeNext",
         "sourceMap": true
     },
