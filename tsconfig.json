@@ -3,7 +3,7 @@
         "rootDir": "src",
         "outDir": "out/src",
         "module": "commonjs",
-        "moduleResolution": "classic",
+        "moduleResolution": "NodeNext",
         "sourceMap": true
     },
     "include": [
