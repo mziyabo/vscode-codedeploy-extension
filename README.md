@@ -1,5 +1,5 @@
 # AWS CodeDeploy VS Code Extension
-[![Build](https://github.com/mziyabo/vscode-codedeploy-extension/actions/workflows/build.yaml/badge.svg)](https://github.com/mziyabo/vscode-codedeploy-extension/actions/workflows/build.yaml) ![Marketplace Downloads](https://img.shields.io/vscode-marketplace/i/mziyabo.vscode-codedeploy.svg)](https://marketplace.visualstudio.com/items?itemName=mziyabo.vscode-codedeploy&ssr=false#overview)
+[![Build](https://github.com/mziyabo/vscode-codedeploy-extension/actions/workflows/build.yaml/badge.svg)](https://github.com/mziyabo/vscode-codedeploy-extension/actions/workflows/build.yaml) ![Marketplace Downloads](https://img.shields.io/vscode-marketplace/i/mziyabo.vscode-codedeploy.svg)
 
 vscode [AWS CodeDeploy](https://docs.aws.amazon.com/codedeploy/latest/userguide/welcome.html) extension for deploying to EC2.
 
