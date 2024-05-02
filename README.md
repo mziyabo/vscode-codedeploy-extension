@@ -1,15 +1,13 @@
 # AWS CodeDeploy VS Code Extension
 
-[![Build](https://github.com/mziyabo/vscode-codedeploy-extension/actions/workflows/build.yaml/badge.svg)](https://github.com/mziyabo/vscode-codedeploy-extension/actions/workflows/build.yaml) [![Marketplace Downloads](https://img.shields.io/vscode-marketplace/i/mziyabo.vscode-codedeploy.svg)](https://marketplace.visualstudio.com/items?itemName=mziyabo.vscode-codedeploy)
+[![Build](https://github.com/mziyabo/vscode-codedeploy-extension/actions/workflows/build.yaml/badge.svg)](https://github.com/mziyabo/vscode-codedeploy-extension/actions/workflows/build.yaml) [![Marketplace Version](https://img.shields.io/vscode-marketplace/v/mziyabo.vscode-codedeploy.svg) ![Marketplace Downloads](https://img.shields.io/vscode-marketplace/i/mziyabo.vscode-codedeploy.svg)](https://marketplace.visualstudio.com/items?itemName=mziyabo.vscode-codedeploy)
 
 
 AWS CodeDeploy extension for VS Code
 
 ## Features
 - Link AWS CodeDeploy Application to vscode workspace and view/manage application.
-
 ![view](resources/marketplace/explorer.PNG)
-
 - Create CodeDeploy Application and/ Deployment Groups.
 - Deploy to CodeDeploy from a vscode Workspace using S3 revision locations.
 
