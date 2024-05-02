@@ -7,7 +7,9 @@ AWS CodeDeploy extension for VS Code
 
 ## Features
 - Link AWS CodeDeploy Application to vscode workspace and view/manage application.
-![view](resources/marketplace/explorer.PNG)
+
+    ![view](resources/marketplace/explorer.PNG)
+    
 - Create CodeDeploy Application and/ Deployment Groups.
 - Deploy to CodeDeploy from a vscode Workspace using S3 revision locations.
 
