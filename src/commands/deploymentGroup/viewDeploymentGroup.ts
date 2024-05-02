@@ -11,7 +11,7 @@ export async function viewDeploymentGroup(node: TreeItem) {
     const deploymentGroup = node.label;
     const codedeploy = new CodeDeployUtil();
 
-    const response = await codedeploy.getDeploymentGroup(deploymentGroup);
+    const response = await codedeploy.getDeploymentGroup(deploymentGroup?.toString());
     const uri = Uri.parse(`untitled:${path.join(`${deploymentGroup}.json`)}`);
 
     workspace.openTextDocument(uri).then((document) => {

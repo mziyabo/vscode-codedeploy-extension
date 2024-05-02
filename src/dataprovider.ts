@@ -35,7 +35,7 @@ export class CodeDeployTreeDataProvider implements TreeDataProvider<TreeItem> {
                             return await codedeploy.getDeploymentGroupsTreeItems();
 
                         case "deploymentGroup":
-                            return codedeploy.getDeploymentGroupTreeItem(element.label);
+                            return codedeploy.getDeploymentGroupTreeItem(element.label.toString());
 
                         case "dgSettings":
                             deploymentGroup = element.id.substr(element.id.indexOf('_') + 1, element.id.length);
@@ -46,7 +46,7 @@ export class CodeDeployTreeDataProvider implements TreeDataProvider<TreeItem> {
                             return codedeploy.getDeployments(deploymentGroup);
 
                         case "deployment":
-                            return codedeploy.getDeploymentTargetTreeItems(element.label);
+                            return codedeploy.getDeploymentTargetTreeItems(element.label.toString());
 
                         case "ec2TagFilters":
                             deploymentGroup = element.id.substr(element.id.indexOf('_') + 1, element.id.length);
@@ -79,6 +79,6 @@ export class CodeDeployTreeDataProvider implements TreeDataProvider<TreeItem> {
     }
 
     refresh(): void {
-        this._onDidChangeTreeData.fire();
+        this._onDidChangeTreeData.fire(null);
     }
 }
